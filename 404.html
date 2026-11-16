@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/rehan-portfolio/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rehan Shaikh - Portfolio</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // Redirects all 404 traffic to index.html with the route intact
+      var segment = 1;
+      var pathSegmentsToKeep = segment;
+      var l = window.location;
+      var lPathName = l.pathname.split('/').slice(1, 1 + pathSegmentsToKeep).join('/');
+      var lSearch = l.search && '&' + l.search.slice(1).replace(/&/g, 'and');
+      var lHash = l.hash;
+      
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        '/' + lPathName + (lPathName ? '/' : '') +
+        '?/' + l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, 'and') +
+        lSearch + lHash
+      );
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
