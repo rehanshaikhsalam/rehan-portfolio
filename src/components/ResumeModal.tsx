@@ -4,11 +4,12 @@ import { X, Download, FileText, Loader2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs';
 import pdfWorkerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { withBaseUrl } from '../utils/portfolioScrollContext';
 
 (globalThis as typeof globalThis & { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
-export const RESUME_URL = '/assets/Rehan_Shaikh_Resume.pdf';
+export const RESUME_URL = withBaseUrl('assets/Rehan_Shaikh_Resume.pdf');
 export const RESUME_FILENAME = 'Rehan_Shaikh_Resume.pdf';
 
 interface ResumeModalProps {
@@ -109,7 +110,10 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
         const bytes = await getPdfBytes();
         if (cancelled) return;
 
-        const standardFontDataUrl = new URL('/pdfjs/standard_fonts/', window.location.origin).href;
+        const standardFontDataUrl = new URL(
+          withBaseUrl('pdfjs/standard_fonts/'),
+          window.location.origin
+        ).href;
         const loadingTask = pdfjsLib.getDocument({
           data: bytes.slice(0),
           standardFontDataUrl,
@@ -234,7 +238,7 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-[28px] sm:rounded-[36px] border-2 border-[#D7E2EA]/80 bg-[#0C0C0C] shadow-2xl text-[#D7E2EA] z-10 overflow-hidden"
+            className="relative w-full max-w-4xl max-h-[90%] flex flex-col rounded-[28px] sm:rounded-[36px] border-2 border-[#D7E2EA]/80 bg-[#0C0C0C] shadow-2xl text-[#D7E2EA] z-10 overflow-hidden"
           >
             {/* Header Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-8 py-4 sm:py-5 border-b border-white/10 bg-[#111214] shrink-0">
@@ -331,7 +335,7 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
                       </p>
                     </div>
                     <img
-                      src="/assets/resume_portrait.jpg"
+                      src={withBaseUrl('assets/resume_portrait.jpg')}
                       alt="Rehan Shaikh portrait"
                       className="w-20 sm:w-24 h-auto rounded border border-black/10 object-cover shrink-0"
                     />

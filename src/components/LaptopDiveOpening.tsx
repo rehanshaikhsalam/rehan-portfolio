@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import ContactModal from './ContactModal';
+import PortfolioExperience from './PortfolioExperience';
 import { patchResumeState } from '../utils/resumeState';
 
 const HX = (u: string) =>
@@ -19,30 +20,6 @@ const ASSETS = {
 };
 
 const EASE = 'cubic-bezier(.2,.8,.2,1)';
-
-const GITHUB_PAGES_PORTFOLIO_URL =
-  'https://rehanshaikhsalam.github.io/rehan-portfolio/?view=portfolio';
-
-function getPortfolioIframeSrc(): string {
-  if (typeof window === 'undefined') {
-    return GITHUB_PAGES_PORTFOLIO_URL;
-  }
-  try {
-    const current = new URL(window.location.href);
-    if (current.hostname === 'rehanshaikhsalam.github.io') {
-      return GITHUB_PAGES_PORTFOLIO_URL;
-    }
-    const baseHref = document.querySelector('base')?.getAttribute('href');
-    const baseUrl = baseHref
-      ? new URL(baseHref, current.origin)
-      : new URL('./', current.href);
-    baseUrl.search = '?view=portfolio';
-    baseUrl.hash = '';
-    return baseUrl.toString();
-  } catch {
-    return '?view=portfolio';
-  }
-}
 
 const BadgeCardContent: React.FC<{ isMain?: boolean; onHitEnter?: () => void }> = ({
   isMain,
@@ -94,7 +71,6 @@ const BadgeCardContent: React.FC<{ isMain?: boolean; onHitEnter?: () => void }> 
 export const LaptopDiveOpening: React.FC = () => {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [portfolioSrc] = useState<string>(() => getPortfolioIframeSrc());
 
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -112,8 +88,6 @@ export const LaptopDiveOpening: React.FC = () => {
   const screenWrapRef = useRef<HTMLDivElement>(null);
   const flashRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const expandedIframeRef = useRef<HTMLIFrameElement>(null);
   const tagRefs = useRef<(HTMLElement | null)[]>([]);
 
   const modeRef = useRef<'hero' | 'case'>('hero');
@@ -294,29 +268,17 @@ export const LaptopDiveOpening: React.FC = () => {
   }, []);
 
   const openExpanded = useCallback(() => {
-    try {
-      iframeRef.current?.contentWindow?.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
-    } catch {
-      // ignore cross-frame issues
-    }
+    window.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
     setIsExpanded(true);
     patchResumeState({ isExpanded: true });
   }, []);
 
   const closeExpanded = useCallback(() => {
-    try {
-      expandedIframeRef.current?.contentWindow?.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
-    } catch {
-      // ignore cross-frame issues
-    }
+    window.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
     setIsExpanded(false);
     patchResumeState({ isExpanded: false });
     requestAnimationFrame(() => {
-      try {
-        iframeRef.current?.contentWindow?.postMessage({ type: 'PORTFOLIO_SYNC' }, '*');
-      } catch {
-        // ignore cross-frame issues
-      }
+      window.postMessage({ type: 'PORTFOLIO_SYNC' }, '*');
     });
   }, []);
 
@@ -646,11 +608,7 @@ export const LaptopDiveOpening: React.FC = () => {
       }
     }
 
-    try {
-      iframeRef.current?.contentWindow?.postMessage({ type: 'PORTFOLIO_SYNC' }, '*');
-    } catch {
-      // ignore cross-frame issues
-    }
+    window.postMessage({ type: 'PORTFOLIO_SYNC' }, '*');
 
     setTimeout(() => {
       frameRef.current?.classList.remove('glide');
@@ -777,14 +735,7 @@ export const LaptopDiveOpening: React.FC = () => {
   const toHero = useCallback(() => {
     if (busyRef.current || modeRef.current !== 'case') return;
     setBusy(true);
-    try {
-      (isExpanded ? expandedIframeRef.current : iframeRef.current)?.contentWindow?.postMessage(
-        { type: 'PORTFOLIO_FLUSH_SCROLL' },
-        '*'
-      );
-    } catch {
-      // ignore cross-frame issues
-    }
+    window.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
     setIsExpanded(false);
     patchResumeState({ mode: 'hero', isExpanded: false });
 
@@ -892,8 +843,23 @@ export const LaptopDiveOpening: React.FC = () => {
   }, [heroIn, isExpanded, place, setBusy]);
 
   useEffect(() => {
+    const getScreenScroller = (target: EventTarget | null) => {
+      if (!(target instanceof Node) || !screenRef.current?.contains(target)) {
+        return null;
+      }
+      return screenRef.current.querySelector<HTMLElement>('[data-portfolio-scroll="true"]');
+    };
+
     const onWheel = (e: WheelEvent) => {
       if (isContactOpen || isExpanded) return;
+      if (modeRef.current === 'case') {
+        const scroller = getScreenScroller(e.target);
+        if (scroller) {
+          if (e.deltaY > 0 || scroller.scrollTop > 2) {
+            return;
+          }
+        }
+      }
       e.preventDefault();
       const now = performance.now();
       if (busyRef.current || now < wheelLockRef.current) return;
@@ -926,6 +892,14 @@ export const LaptopDiveOpening: React.FC = () => {
       const dy = t.clientY - touchStartRef.current.y;
       touchStartRef.current = null;
       if (Math.abs(dy) < 40) return;
+
+      if (modeRef.current === 'case') {
+        const scroller = getScreenScroller(e.target);
+        if (scroller && scroller.scrollTop > 2) {
+          return;
+        }
+      }
+
       if (modeRef.current === 'hero' && dy <= -40) {
         toCase();
       } else if (modeRef.current === 'case' && dy >= 40) {
@@ -1038,14 +1012,9 @@ export const LaptopDiveOpening: React.FC = () => {
 
           <div className="haldoren-screen" ref={screenRef}>
             <div className="haldoren-screen-iframe-wrap" ref={screenWrapRef}>
-              <iframe
-                ref={iframeRef}
-                src={portfolioSrc}
-                title="Rehan Shaikh Portfolio"
-                allow="fullscreen; autoplay"
-                allowFullScreen
-                className="haldoren-screen-iframe"
-              />
+              <div className="haldoren-screen-iframe">
+                {!isExpanded && <PortfolioExperience embedded />}
+              </div>
             </div>
             <div className="haldoren-flash" ref={flashRef} />
           </div>
@@ -1171,14 +1140,9 @@ export const LaptopDiveOpening: React.FC = () => {
               <span>Laptop View</span>
             </button>
           </div>
-          <iframe
-            ref={expandedIframeRef}
-            src={portfolioSrc}
-            title="Rehan Shaikh Portfolio Fullscreen"
-            allow="fullscreen; autoplay"
-            allowFullScreen
-            className="haldoren-expanded-iframe"
-          />
+          <div className="haldoren-expanded-iframe">
+            <PortfolioExperience embedded />
+          </div>
         </div>
       )}
 

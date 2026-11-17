@@ -2,19 +2,23 @@ import React from 'react';
 import FadeIn from './FadeIn';
 import AnimatedText from './AnimatedText';
 import ContactButton from './ContactButton';
+import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
 interface AboutSectionProps {
   onOpenContact: () => void;
 }
 
 export const AboutSection: React.FC<AboutSectionProps> = ({ onOpenContact }) => {
+  const { embedded } = usePortfolioScroll();
   const aboutText =
     'I am a hospitality student building practical skills in AI automation and no-code workflow development. I work with Make.com, Gemini AI, Google Workspace, and webhooks to connect apps, automate repetitive processes, and streamline everyday business operations.';
 
   return (
     <section
       id="about"
-      className="relative min-h-screen flex flex-col items-center justify-center px-5 sm:px-8 md:px-10 py-20 overflow-hidden bg-[#0C0C0C] select-none"
+      className={`relative ${
+        embedded ? 'min-h-full' : 'min-h-screen'
+      } flex flex-col items-center justify-center px-5 sm:px-8 md:px-10 py-20 overflow-hidden bg-[#0C0C0C] select-none`}
     >
       {/* 4 Decorative 3D Floating Elements */}
       {/* Top-left: Moon icon */}

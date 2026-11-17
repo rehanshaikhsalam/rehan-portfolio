@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, type MotionValue } from 'framer-motion';
+import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
 interface AnimatedTextProps {
   text: string;
@@ -30,8 +31,10 @@ const Character: React.FC<CharProps> = ({ char, progress, range }) => {
 
 export const AnimatedText: React.FC<AnimatedTextProps> = ({ text, className = '' }) => {
   const containerRef = useRef<HTMLParagraphElement>(null);
+  const { containerRef: scrollContainerRef } = usePortfolioScroll();
   const { scrollYProgress } = useScroll({
     target: containerRef,
+    ...(scrollContainerRef ? { container: scrollContainerRef } : {}),
     offset: ['start 0.8', 'end 0.2'],
   });
 

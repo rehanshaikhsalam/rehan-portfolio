@@ -347,7 +347,10 @@ body.is-case .haldoren-screen {
   transform-origin: 0 0;
   border: none;
   display: block;
+  overflow: hidden;
   background: #0C0C0C;
+  color: #D7E2EA;
+  font-family: 'Kanit', sans-serif;
 }
 .haldoren-screen::after {
   content: "";
@@ -542,9 +545,14 @@ body.is-case .haldoren-expand-btn {
 }
 .haldoren-expanded-iframe {
   flex: 1;
+  min-height: 0;
   width: 100%;
   border: none;
+  overflow: hidden;
+  transform: translateZ(0);
   background: #0C0C0C;
+  color: #D7E2EA;
+  font-family: 'Kanit', sans-serif;
 }
 
 .haldoren-m-only {

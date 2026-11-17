@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
 const ROW_1_IMAGES = [
   'https://motionsites.ai/assets/hero-space-voyage-preview-eECLH3Yc.gif',
@@ -33,19 +34,27 @@ const ROW_2_TRIPLED = [...ROW_2_IMAGES, ...ROW_2_IMAGES, ...ROW_2_IMAGES];
 
 export const MarqueeSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
+  const { containerRef: scrollContainerRef } = usePortfolioScroll();
   const [scrollOffset, setScrollOffset] = useState(0);
 
   useEffect(() => {
     let ticking = false;
+    const scroller = scrollContainerRef?.current ?? null;
 
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           if (sectionRef.current) {
             const rect = sectionRef.current.getBoundingClientRect();
-            const sectionTop = rect.top + window.scrollY;
-            const offset = (window.scrollY - sectionTop + window.innerHeight) * 0.3;
-            setScrollOffset(offset);
+            if (scroller) {
+              const containerRect = scroller.getBoundingClientRect();
+              const offset = (containerRect.bottom - rect.top) * 0.3;
+              setScrollOffset(offset);
+            } else {
+              const sectionTop = rect.top + window.scrollY;
+              const offset = (window.scrollY - sectionTop + window.innerHeight) * 0.3;
+              setScrollOffset(offset);
+            }
           }
           ticking = false;
         });
@@ -53,13 +62,14 @@ export const MarqueeSection: React.FC = () => {
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    const target: HTMLElement | Window = scroller ?? window;
+    target.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      target.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [scrollContainerRef]);
 
   const row1Transform = `translateX(${scrollOffset - 200}px)`;
   const row2Transform = `translateX(-${scrollOffset - 200}px)`;

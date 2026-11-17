@@ -2,6 +2,7 @@ import React from 'react';
 import FadeIn from './FadeIn';
 import Magnet from './Magnet';
 import ContactButton from './ContactButton';
+import { usePortfolioScroll, withBaseUrl } from '../utils/portfolioScrollContext';
 
 interface HeroSectionProps {
   onOpenContact: () => void;
@@ -9,6 +10,7 @@ interface HeroSectionProps {
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenResume }) => {
+  const { embedded } = usePortfolioScroll();
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) {
@@ -17,7 +19,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenR
   };
 
   return (
-    <section className="relative h-screen min-h-[660px] flex flex-col justify-between overflow-x-clip bg-[#0C0C0C]">
+    <section
+      className={`relative ${
+        embedded ? 'h-full' : 'h-screen'
+      } min-h-[660px] flex flex-col justify-between overflow-x-clip bg-[#0C0C0C]`}
+    >
       {/* Navbar */}
       <FadeIn delay={0} y={-20} as="header" className="relative w-full z-30">
         <nav className="flex items-center justify-between px-5 sm:px-6 md:px-10 pt-6 md:pt-8">
@@ -78,7 +84,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenR
             inactiveTransition="transform 0.6s ease-in-out"
           >
             <img
-              src="/assets/aistudio/rehan_cutout.png"
+              src={withBaseUrl('assets/aistudio/rehan_cutout.png')}
               alt="Rehan Shaikh - AI Automation & No-Code Specialist"
               className="w-[280px] sm:w-[360px] md:w-[440px] lg:w-[520px] max-h-[72vh] h-auto object-contain drop-shadow-2xl select-none pointer-events-none"
               draggable={false}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUp, Sparkles } from 'lucide-react';
 import ContactButton from './ContactButton';
+import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
 interface FooterProps {
   onOpenContact: () => void;
@@ -8,8 +9,13 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) => {
+  const { containerRef: scrollContainerRef } = usePortfolioScroll();
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (scrollContainerRef?.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (

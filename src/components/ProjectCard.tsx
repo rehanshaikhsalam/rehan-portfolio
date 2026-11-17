@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import LiveProjectButton from './LiveProjectButton';
+import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
 export interface ProjectData {
   id: string;
@@ -30,8 +31,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onSelectProject,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { containerRef: scrollContainerRef } = usePortfolioScroll();
   const { scrollYProgress } = useScroll({
     target: containerRef,
+    ...(scrollContainerRef ? { container: scrollContainerRef } : {}),
     offset: ['start start', 'end start'],
   });
 

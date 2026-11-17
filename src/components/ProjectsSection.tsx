@@ -4,13 +4,15 @@ import FadeIn from './FadeIn';
 import ProjectCard, { ProjectData } from './ProjectCard';
 import ProjectModal from './ProjectModal';
 import { loadResumeState, patchResumeState, subscribeResumeSync } from '../utils/resumeState';
+import { withBaseUrl } from '../utils/portfolioScrollContext';
 
 interface ProjectsSectionProps {
   onOpenContact: () => void;
 }
 
-const SHOWCASE_VIDEO_SRC =
-  '/assets/aistudio/Integration_Webhooks__Google_Gemini_AI___Make_-_Google_Chrome_2026-11-02_16-56-36_724c50df.mp4';
+const SHOWCASE_VIDEO_SRC = withBaseUrl(
+  'assets/aistudio/Integration_Webhooks__Google_Gemini_AI___Make_-_Google_Chrome_2026-11-02_16-56-36_724c50df.mp4'
+);
 
 const OTHER_PROJECTS: ProjectData[] = [
   {
@@ -19,9 +21,9 @@ const OTHER_PROJECTS: ProjectData[] = [
     category: 'Make.com • Lead Capture',
     tagline:
       'Leads submitted through Google Forms are watched by Make.com in real time, mapped into Google Sheets, and routed to trigger automated follow-up emails.',
-    col1Img1: '/assets/project-2-form.jpg',
-    col1Img2: '/assets/project-2-sheets.jpg',
-    col2Img: '/assets/project-2.jpg',
+    col1Img1: withBaseUrl('assets/project-2-form.jpg'),
+    col1Img2: withBaseUrl('assets/project-2-sheets.jpg'),
+    col2Img: withBaseUrl('assets/project-2.jpg'),
     role: 'Make.com Scenario Design, Google Forms, Google Sheets, Gmail, Filters, Data Mapping',
     clientType: 'Live Scenario • Lead Capture & Organization',
     outputs: 'Lead / Form Input → Make.com → Data Processing → Google Sheets → Notification',
@@ -32,9 +34,9 @@ const OTHER_PROJECTS: ProjectData[] = [
     category: 'Make.com • Gemini AI & Routing',
     tagline:
       'Incoming enquiries are analyzed by Google Gemini AI to generate a summary and tailored response, then automatically routed across Gmail branches.',
-    col1Img1: '/assets/project-2-flow.jpg',
-    col1Img2: '/assets/project-1-details.jpg',
-    col2Img: '/assets/project-1.jpg',
+    col1Img1: withBaseUrl('assets/project-2-flow.jpg'),
+    col1Img2: withBaseUrl('assets/project-1-details.jpg'),
+    col2Img: withBaseUrl('assets/project-1.jpg'),
     role: 'Make.com Orchestration, Google Gemini AI, Conditional Routers, Webhooks, Gmail, Sheets',
     clientType: 'Live Scenario • Multi-Branch Routing',
     outputs: 'Sheets Watch → Gemini AI → 3-Way Router → Conditional Gmail Replies',
