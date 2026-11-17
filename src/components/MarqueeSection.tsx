@@ -34,7 +34,7 @@ const ROW_2_TRIPLED = [...ROW_2_IMAGES, ...ROW_2_IMAGES, ...ROW_2_IMAGES];
 
 export const MarqueeSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
-  const { containerRef: scrollContainerRef } = usePortfolioScroll();
+  const { containerRef: scrollContainerRef, bezel } = usePortfolioScroll();
   const [scrollOffset, setScrollOffset] = useState(0);
 
   useEffect(() => {
@@ -48,7 +48,8 @@ export const MarqueeSection: React.FC = () => {
             const rect = sectionRef.current.getBoundingClientRect();
             if (scroller) {
               const containerRect = scroller.getBoundingClientRect();
-              const offset = (containerRect.bottom - rect.top) * 0.3;
+              const scale = scroller.clientHeight > 0 ? containerRect.height / scroller.clientHeight : 1;
+              const offset = ((containerRect.bottom - rect.top) / (scale || 1)) * 0.3;
               setScrollOffset(offset);
             } else {
               const sectionTop = rect.top + window.scrollY;
@@ -77,7 +78,9 @@ export const MarqueeSection: React.FC = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative w-full overflow-hidden bg-[#0C0C0C] pt-24 sm:pt-32 md:pt-40 pb-10 select-none"
+      className={`relative w-full overflow-hidden bg-[#0C0C0C] ${
+        bezel ? 'pt-40' : 'pt-24 sm:pt-32 md:pt-40'
+      } pb-10 select-none`}
     >
       <div className="flex flex-col gap-3">
         {/* Row 1 - Moves RIGHT on scroll */}

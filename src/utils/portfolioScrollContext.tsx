@@ -3,11 +3,13 @@ import React, { createContext, useContext } from 'react';
 export interface PortfolioScrollContextValue {
   containerRef: React.RefObject<HTMLDivElement | null> | null;
   embedded: boolean;
+  bezel: boolean;
 }
 
 export const PortfolioScrollContext = createContext<PortfolioScrollContextValue>({
   containerRef: null,
   embedded: false,
+  bezel: false,
 });
 
 export function usePortfolioScroll(): PortfolioScrollContextValue {

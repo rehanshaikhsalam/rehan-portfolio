@@ -34,7 +34,10 @@ function computeTargetScrollY(
   return Math.min(maxScroll, Math.max(0, state.portfolioScrollY));
 }
 
-export const PortfolioExperience: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean }> = ({
+  embedded = false,
+  bezel = false,
+}) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const [isContactOpen, setIsContactOpen] = useState<boolean>(
     () => loadResumeState().portfolioContactOpen
@@ -256,7 +259,7 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean }> = ({ embedded
 
   return (
     <PortfolioScrollContext.Provider
-      value={{ containerRef: embedded ? scrollContainerRef : null, embedded }}
+      value={{ containerRef: embedded ? scrollContainerRef : null, embedded, bezel }}
     >
       <div
         ref={embedded ? scrollContainerRef : undefined}

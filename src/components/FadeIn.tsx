@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
+import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
 interface FadeInProps extends HTMLMotionProps<'div'> {
   children: React.ReactNode;
@@ -22,12 +23,18 @@ export const FadeIn: React.FC<FadeInProps> = ({
   ...props
 }) => {
   const Component = motion[as] as typeof motion.div;
+  const { containerRef: scrollContainerRef } = usePortfolioScroll();
 
   return (
     <Component
       initial={{ opacity: 0, x, y }}
       whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once: true, margin: '50px', amount: 0 }}
+      viewport={{
+        once: true,
+        margin: '50px',
+        amount: 0,
+        ...(scrollContainerRef ? { root: scrollContainerRef } : {}),
+      }}
       transition={{
         duration,
         delay,

@@ -4,7 +4,7 @@ import FadeIn from './FadeIn';
 import ProjectCard, { ProjectData } from './ProjectCard';
 import ProjectModal from './ProjectModal';
 import { loadResumeState, patchResumeState, subscribeResumeSync } from '../utils/resumeState';
-import { withBaseUrl } from '../utils/portfolioScrollContext';
+import { usePortfolioScroll, withBaseUrl } from '../utils/portfolioScrollContext';
 
 interface ProjectsSectionProps {
   onOpenContact: () => void;
@@ -51,6 +51,7 @@ function formatTime(seconds: number): string {
 }
 
 export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onOpenContact }) => {
+  const { bezel } = usePortfolioScroll();
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -198,15 +199,19 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onOpenContact 
   return (
     <section
       id="projects"
-      className="relative bg-[#0C0C0C] rounded-t-[40px] sm:rounded-t-[50px] md:rounded-t-[60px] -mt-10 sm:-mt-12 md:-mt-14 z-10 px-4 sm:px-8 md:px-10 pt-20 sm:pt-24 md:pt-32 pb-32"
+      className={`relative bg-[#0C0C0C] ${
+        bezel
+          ? 'rounded-t-[60px] -mt-14 px-10 pt-32'
+          : 'rounded-t-[40px] sm:rounded-t-[50px] md:rounded-t-[60px] -mt-10 sm:-mt-12 md:-mt-14 px-4 sm:px-8 md:px-10 pt-20 sm:pt-24 md:pt-32'
+      } z-10 pb-32`}
     >
       <div className="max-w-6xl mx-auto">
         {/* Heading: "Project" (singular) */}
-        <div className="mb-14 sm:mb-20 md:mb-24 text-center">
+        <div className={bezel ? 'mb-24 text-center' : 'mb-14 sm:mb-20 md:mb-24 text-center'}>
           <FadeIn delay={0} y={40}>
             <h2
               className="hero-heading font-black uppercase leading-none tracking-tight text-center"
-              style={{ fontSize: 'clamp(3rem, 12vw, 160px)' }}
+              style={{ fontSize: bezel ? '153.6px' : 'clamp(3rem, 12vw, 160px)' }}
             >
               Project
             </h2>
@@ -214,29 +219,45 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onOpenContact 
         </div>
 
         {/* 01 Featured Full-Screen Cinematic Video Showcase */}
-        <div className="mb-14 sm:mb-20 md:mb-24">
+        <div className={bezel ? 'mb-24' : 'mb-14 sm:mb-20 md:mb-24'}>
           <FadeIn delay={0.1} y={30}>
             <div
               ref={containerRef}
               className={
                 isCinemaFullscreen
                   ? 'fixed inset-0 z-50 bg-black flex flex-col justify-between'
-                  : 'relative w-full mx-auto rounded-[40px] sm:rounded-[50px] md:rounded-[60px] border-2 border-[#D7E2EA] bg-[#0C0C0C] p-4 sm:p-6 md:p-8 overflow-hidden shadow-[0_-10px_40px_rgba(0,0,0,0.8)]'
+                  : `relative w-full mx-auto ${
+                      bezel
+                        ? 'rounded-[60px] p-8'
+                        : 'rounded-[40px] sm:rounded-[50px] md:rounded-[60px] p-4 sm:p-6 md:p-8'
+                    } border-2 border-[#D7E2EA] bg-[#0C0C0C] overflow-hidden shadow-[0_-10px_40px_rgba(0,0,0,0.8)]`
               }
             >
               {!isFullscreen && (
-                <div className="flex items-center gap-4 sm:gap-6 md:gap-8 mb-5 sm:mb-6">
+                <div
+                  className={`flex items-center ${
+                    bezel ? 'gap-8 mb-6' : 'gap-4 sm:gap-6 md:gap-8 mb-5 sm:mb-6'
+                  }`}
+                >
                   <span
                     className="font-black text-[#D7E2EA] leading-none tracking-tighter select-none"
-                    style={{ fontSize: 'clamp(2.8rem, 6.5vw, 100px)' }}
+                    style={{ fontSize: bezel ? '83.2px' : 'clamp(2.8rem, 6.5vw, 100px)' }}
                   >
                     01
                   </span>
                   <div className="flex flex-col">
-                    <span className="text-xs sm:text-sm uppercase tracking-widest text-[#D7E2EA]/60 font-light">
+                    <span
+                      className={`${
+                        bezel ? 'text-sm' : 'text-xs sm:text-sm'
+                      } uppercase tracking-widest text-[#D7E2EA]/60 font-light`}
+                    >
                       Make.com • Webhooks &amp; Gemini AI
                     </span>
-                    <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium uppercase text-[#D7E2EA] tracking-wide">
+                    <h3
+                      className={`${
+                        bezel ? 'text-4xl' : 'text-xl sm:text-2xl md:text-3xl lg:text-4xl'
+                      } font-medium uppercase text-[#D7E2EA] tracking-wide`}
+                    >
                       AI Lead Scoring &amp; Airtable Pipeline
                     </h3>
                   </div>
@@ -248,14 +269,20 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onOpenContact 
                 className={
                   isFullscreen
                     ? 'relative flex-1 w-full bg-black flex items-center justify-center overflow-hidden'
-                    : 'relative w-full rounded-[24px] sm:rounded-[32px] md:rounded-[38px] border border-white/10 bg-black flex flex-col overflow-hidden'
+                    : `relative w-full ${
+                        bezel
+                          ? 'rounded-[38px]'
+                          : 'rounded-[24px] sm:rounded-[32px] md:rounded-[38px]'
+                      } border border-white/10 bg-black flex flex-col overflow-hidden`
                 }
               >
                 <div
                   className={
                     isFullscreen
                       ? 'relative flex-1 w-full bg-black flex items-center justify-center overflow-hidden'
-                      : 'relative w-full bg-black flex items-center justify-center overflow-hidden aspect-[1920/1020] max-h-[calc(100vh-200px)]'
+                      : `relative w-full bg-black flex items-center justify-center overflow-hidden aspect-[1920/1020] ${
+                          bezel ? 'max-h-[665px]' : 'max-h-[calc(100vh-200px)]'
+                        }`
                   }
                 >
                   <video

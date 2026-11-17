@@ -1013,7 +1013,7 @@ export const LaptopDiveOpening: React.FC = () => {
           <div className="haldoren-screen" ref={screenRef}>
             <div className="haldoren-screen-iframe-wrap" ref={screenWrapRef}>
               <div className="haldoren-screen-iframe">
-                {!isExpanded && <PortfolioExperience embedded />}
+                {!isExpanded && <PortfolioExperience embedded bezel />}
               </div>
             </div>
             <div className="haldoren-flash" ref={flashRef} />

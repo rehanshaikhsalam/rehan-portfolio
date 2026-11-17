@@ -9,7 +9,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) => {
-  const { containerRef: scrollContainerRef } = usePortfolioScroll();
+  const { containerRef: scrollContainerRef, bezel } = usePortfolioScroll();
   const scrollToTop = () => {
     if (scrollContainerRef?.current) {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -19,13 +19,32 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) =
   };
 
   return (
-    <footer id="contact" className="relative bg-[#0C0C0C] text-[#D7E2EA] px-6 md:px-10 py-16 sm:py-20 border-t border-white/10 z-10">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+    <footer
+      id="contact"
+      className={`relative bg-[#0C0C0C] text-[#D7E2EA] ${
+        bezel ? 'px-10 py-20' : 'px-6 md:px-10 py-16 sm:py-20'
+      } border-t border-white/10 z-10`}
+    >
+      <div
+        className={`max-w-6xl mx-auto flex ${
+          bezel
+            ? 'flex-row items-center justify-between text-left'
+            : 'flex-col md:flex-row items-center justify-between text-center md:text-left'
+        } gap-8`}
+      >
         <div>
-          <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-semibold uppercase tracking-widest text-purple-400 mb-2">
+          <div
+            className={`flex items-center ${
+              bezel ? 'justify-start' : 'justify-center md:justify-start'
+            } gap-2 text-xs font-semibold uppercase tracking-widest text-purple-400 mb-2`}
+          >
             <Sparkles className="w-3.5 h-3.5" /> Rehan Shaikh • AI Automation &amp; No-Code Specialist
           </div>
-          <h3 className="hero-heading text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
+          <h3
+            className={`hero-heading ${
+              bezel ? 'text-5xl' : 'text-3xl sm:text-4xl md:text-5xl'
+            } font-black uppercase tracking-tight`}
+          >
             Let&apos;s Build Something Useful
           </h3>
           <p className="text-sm text-[#D7E2EA]/60 max-w-md font-light mt-2">
@@ -33,7 +52,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) =
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className={`flex ${bezel ? 'flex-row' : 'flex-col sm:flex-row'} items-center gap-4`}>
           <ContactButton onClick={onOpenContact} label="Get In Touch" />
           <button
             onClick={scrollToTop}
@@ -46,7 +65,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) =
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-12 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-[#D7E2EA]/40 gap-4">
+      <div
+        className={`max-w-6xl mx-auto mt-12 pt-8 border-t border-white/5 flex ${
+          bezel ? 'flex-row' : 'flex-col sm:flex-row'
+        } items-center justify-between text-xs text-[#D7E2EA]/40 gap-4`}
+      >
         <span>© {new Date().getFullYear()} Rehan Shaikh. All rights reserved.</span>
         <div className="flex items-center gap-6 uppercase tracking-wider">
           <a
