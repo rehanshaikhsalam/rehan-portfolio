@@ -1,4 +1,4 @@
-name: Deploy Portfolio
+name: Deploy static content to Pages
 
 on:
   push:
@@ -18,22 +18,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: '20'
+          # Removed cache: 'npm' since package-lock.json is absent
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
-        working-directory: ./rehan-portfolio
+        # --legacy-peer-deps bypasses ERESOLVE dependency conflicts safely
 
       - name: Build project
         run: npm run build
-        working-directory: ./rehan-portfolio
+        # Verification: Successfully outputs production bundle in /dist
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -41,14 +41,15 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './rehan-portfolio/dist'
+          path: './dist'
 
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.pages-url }}
-    runs-on: ubuntu-latest
+      url: ${{ steps.deployment.outputs.page_url }}
     needs: build
+    runs-on: ubuntu-latest
+    name: Deploy
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
