@@ -20,6 +20,30 @@ const ASSETS = {
 
 const EASE = 'cubic-bezier(.2,.8,.2,1)';
 
+const GITHUB_PAGES_PORTFOLIO_URL =
+  'https://rehanshaikhsalam.github.io/rehan-portfolio/?view=portfolio';
+
+function getPortfolioIframeSrc(): string {
+  if (typeof window === 'undefined') {
+    return GITHUB_PAGES_PORTFOLIO_URL;
+  }
+  try {
+    const current = new URL(window.location.href);
+    if (current.hostname === 'rehanshaikhsalam.github.io') {
+      return GITHUB_PAGES_PORTFOLIO_URL;
+    }
+    const baseHref = document.querySelector('base')?.getAttribute('href');
+    const baseUrl = baseHref
+      ? new URL(baseHref, current.origin)
+      : new URL('./', current.href);
+    baseUrl.search = '?view=portfolio';
+    baseUrl.hash = '';
+    return baseUrl.toString();
+  } catch {
+    return '?view=portfolio';
+  }
+}
+
 const BadgeCardContent: React.FC<{ isMain?: boolean; onHitEnter?: () => void }> = ({
   isMain,
   onHitEnter,
@@ -70,6 +94,7 @@ const BadgeCardContent: React.FC<{ isMain?: boolean; onHitEnter?: () => void }> 
 export const LaptopDiveOpening: React.FC = () => {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [portfolioSrc] = useState<string>(() => getPortfolioIframeSrc());
 
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -1015,7 +1040,7 @@ export const LaptopDiveOpening: React.FC = () => {
             <div className="haldoren-screen-iframe-wrap" ref={screenWrapRef}>
               <iframe
                 ref={iframeRef}
-                src="/?view=portfolio"
+                src={portfolioSrc}
                 title="Rehan Shaikh Portfolio"
                 allow="fullscreen; autoplay"
                 allowFullScreen
@@ -1148,7 +1173,7 @@ export const LaptopDiveOpening: React.FC = () => {
           </div>
           <iframe
             ref={expandedIframeRef}
-            src="/?view=portfolio"
+            src={portfolioSrc}
             title="Rehan Shaikh Portfolio Fullscreen"
             allow="fullscreen; autoplay"
             allowFullScreen
