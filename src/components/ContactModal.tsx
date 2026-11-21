@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, CheckCircle2, Sparkles, Mail, MessageSquare } from 'lucide-react';
+import { X, CheckCircle2, Sparkles, Mail, MessageSquare } from 'lucide-react';
 import ContactButton from './ContactButton';
 import {
   ContactDraft,
@@ -19,12 +19,19 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   const [formData, setFormData] = useState<ContactDraft>(() => loadResumeState().contactDraft);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(() => loadResumeState().contactSubmitted);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitTimerRef = useRef<number>(0);
 
   useEffect(() => {
-    return subscribeResumeSync((state) => {
+    const unsub = subscribeResumeSync((state) => {
       setFormData(state.contactDraft);
       setIsSubmitted(state.contactSubmitted);
     });
+    return () => {
+      unsub();
+      if (submitTimerRef.current) {
+        window.clearTimeout(submitTimerRef.current);
+      }
+    };
   }, []);
 
   const updateDraft = (patch: Partial<ContactDraft>) => {
@@ -38,7 +45,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
+    if (submitTimerRef.current) window.clearTimeout(submitTimerRef.current);
+    submitTimerRef.current = window.setTimeout(() => {
+      submitTimerRef.current = 0;
       setIsSubmitting(false);
       setIsSubmitted(true);
       patchResumeState({ contactSubmitted: true });

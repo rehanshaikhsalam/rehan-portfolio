@@ -1,13 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, FileText, Loader2 } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs';
-import pdfWorkerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { withBaseUrl } from '../utils/portfolioScrollContext';
 
-(globalThis as typeof globalThis & { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
+let pdfjsLoaderPromise: Promise<PdfJsModule> | null = null;
+
+function loadPdfJs(): Promise<PdfJsModule> {
+  if (!pdfjsLoaderPromise) {
+    pdfjsLoaderPromise = Promise.all([
+      import('pdfjs-dist/legacy/build/pdf.mjs'),
+      import('pdfjs-dist/legacy/build/pdf.worker.min.mjs'),
+      import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
+    ]).then(([pdfjsLib, pdfjsWorker, workerUrlMod]) => {
+      (globalThis as typeof globalThis & { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrlMod.default;
+      return pdfjsLib;
+    });
+  }
+  return pdfjsLoaderPromise;
+}
 
 export const RESUME_URL = withBaseUrl('assets/Rehan_Shaikh_Resume.pdf');
 export const RESUME_FILENAME = 'Rehan_Shaikh_Resume.pdf';
@@ -80,11 +92,6 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
     }
   }, []);
 
-  // Pre-warm PDF bytes in background so Download PDF works synchronously on first click
-  useEffect(() => {
-    void getPdfBytes().catch(() => {});
-  }, [getPdfBytes]);
-
   useEffect(() => {
     if (!isOpen) return;
 
@@ -107,7 +114,7 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
 
     (async () => {
       try {
-        const bytes = await getPdfBytes();
+        const [bytes, pdfjsLib] = await Promise.all([getPdfBytes(), loadPdfJs()]);
         if (cancelled) return;
 
         const standardFontDataUrl = new URL(
@@ -157,7 +164,11 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
           if (cancelled) return;
 
           rendered.push(canvas.toDataURL('image/png'));
+          canvas.width = 0;
+          canvas.height = 0;
         }
+
+        await loadingTask.destroy().catch(() => {});
 
         if (cancelled) return;
         loadedRef.current = true;
@@ -334,11 +345,18 @@ export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => 
                         Bangalore, Karnataka &nbsp;|&nbsp; 9014700399 &nbsp;|&nbsp; rehanshaikhsalam@gmail.com
                       </p>
                     </div>
-                    <img
-                      src={withBaseUrl('assets/resume_portrait.jpg')}
-                      alt="Rehan Shaikh portrait"
-                      className="w-20 sm:w-24 h-auto rounded border border-black/10 object-cover shrink-0"
-                    />
+                    <picture className="shrink-0">
+                      <source srcSet={withBaseUrl('assets/resume_portrait.webp')} type="image/webp" />
+                      <img
+                        src={withBaseUrl('assets/resume_portrait.jpg')}
+                        alt="Rehan Shaikh portrait"
+                        width={96}
+                        height={116}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-20 sm:w-24 h-auto rounded border border-black/10 object-cover shrink-0"
+                      />
+                    </picture>
                   </div>
 
                   <div>

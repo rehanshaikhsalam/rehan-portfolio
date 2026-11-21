@@ -8,16 +8,20 @@ interface AboutSectionProps {
   onOpenContact: () => void;
 }
 
-export const AboutSection: React.FC<AboutSectionProps> = ({ onOpenContact }) => {
+export const AboutSection: React.FC<AboutSectionProps> = React.memo(({ onOpenContact }) => {
   const { embedded, bezel } = usePortfolioScroll();
   const aboutText =
     'I am a hospitality student building practical skills in AI automation and no-code workflow development. I work with Make.com, Gemini AI, Google Workspace, and webhooks to connect apps, automate repetitive processes, and streamline everyday business operations.';
+
+  const floatShadow = bezel
+    ? 'drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]'
+    : 'drop-shadow-[0_10px_20px_rgba(0,0,0,0.7)] sm:drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]';
 
   return (
     <section
       id="about"
       className={`relative ${
-        embedded ? 'min-h-full' : 'min-h-screen'
+        embedded ? 'min-h-full' : 'min-h-[100svh]'
       } flex flex-col items-center justify-center ${
         bezel ? 'px-10' : 'px-5 sm:px-8 md:px-10'
       } py-20 overflow-hidden bg-[#0C0C0C] select-none`}
@@ -33,10 +37,13 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onOpenContact }) => 
           <img
             src="https://shrug-person-78902957.figma.site/_components/v2/ebb2b8f25d8e24d5f0a5ca8af4c950de81aa2fd7/moon_icon.11395d36.png"
             alt="Moon 3D icon"
+            width={210}
+            height={210}
             className={`${
               bezel ? 'w-[210px]' : 'w-[120px] sm:w-[160px] md:w-[210px]'
-            } h-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]`}
+            } h-auto object-contain ${floatShadow}`}
             loading="lazy"
+            decoding="async"
             draggable={false}
           />
         </FadeIn>
@@ -52,10 +59,13 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onOpenContact }) => 
           <img
             src="https://shrug-person-78902957.figma.site/_components/v2/ebb2b8f25d8e24d5f0a5ca8af4c950de81aa2fd7/p59_1.4659672e.png"
             alt="3D object"
+            width={180}
+            height={180}
             className={`${
               bezel ? 'w-[180px]' : 'w-[100px] sm:w-[140px] md:w-[180px]'
-            } h-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]`}
+            } h-auto object-contain ${floatShadow}`}
             loading="lazy"
+            decoding="async"
             draggable={false}
           />
         </FadeIn>
@@ -71,10 +81,13 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onOpenContact }) => 
           <img
             src="https://shrug-person-78902957.figma.site/_components/v2/ebb2b8f25d8e24d5f0a5ca8af4c950de81aa2fd7/lego_icon-1.703bb594.png"
             alt="Lego 3D icon"
+            width={210}
+            height={210}
             className={`${
               bezel ? 'w-[210px]' : 'w-[120px] sm:w-[160px] md:w-[210px]'
-            } h-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]`}
+            } h-auto object-contain ${floatShadow}`}
             loading="lazy"
+            decoding="async"
             draggable={false}
           />
         </FadeIn>
@@ -90,10 +103,13 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onOpenContact }) => 
           <img
             src="https://shrug-person-78902957.figma.site/_components/v2/ebb2b8f25d8e24d5f0a5ca8af4c950de81aa2fd7/Group_134-1.2e04f3ce.png"
             alt="3D group element"
+            width={220}
+            height={220}
             className={`${
               bezel ? 'w-[220px]' : 'w-[130px] sm:w-[170px] md:w-[220px]'
-            } h-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]`}
+            } h-auto object-contain ${floatShadow}`}
             loading="lazy"
+            decoding="async"
             draggable={false}
           />
         </FadeIn>
@@ -132,6 +148,8 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onOpenContact }) => 
       </div>
     </section>
   );
-};
+});
+
+AboutSection.displayName = 'AboutSection';
 
 export default AboutSection;

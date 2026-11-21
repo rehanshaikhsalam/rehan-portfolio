@@ -7,7 +7,7 @@ interface ContactButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   className?: string;
 }
 
-export const ContactButton: React.FC<ContactButtonProps> = ({
+export const ContactButton: React.FC<ContactButtonProps> = React.memo(({
   label = 'Contact Me',
   onClick,
   className = '',
@@ -32,6 +32,8 @@ export const ContactButton: React.FC<ContactButtonProps> = ({
       <span>{label}</span>
     </button>
   );
-};
+});
+
+ContactButton.displayName = 'ContactButton';
 
 export default ContactButton;

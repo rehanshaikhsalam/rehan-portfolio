@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
 const ROW_1_IMAGES = [
@@ -28,52 +28,90 @@ const ROW_2_IMAGES = [
   'https://motionsites.ai/assets/hero-celestia-preview-0yO3jXO8.gif',
 ];
 
-// Tripled lists for seamless wrap
-const ROW_1_TRIPLED = [...ROW_1_IMAGES, ...ROW_1_IMAGES, ...ROW_1_IMAGES];
-const ROW_2_TRIPLED = [...ROW_2_IMAGES, ...ROW_2_IMAGES, ...ROW_2_IMAGES];
-
-export const MarqueeSection: React.FC = () => {
+export const MarqueeSection: React.FC = React.memo(() => {
   const sectionRef = useRef<HTMLElement>(null);
+  const row1Ref = useRef<HTMLDivElement>(null);
+  const row2Ref = useRef<HTMLDivElement>(null);
   const { containerRef: scrollContainerRef, bezel } = usePortfolioScroll();
-  const [scrollOffset, setScrollOffset] = useState(0);
 
   useEffect(() => {
-    let ticking = false;
-    const scroller = scrollContainerRef?.current ?? null;
+    const sectionEl = sectionRef.current;
+    if (!sectionEl) return;
 
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          if (sectionRef.current) {
-            const rect = sectionRef.current.getBoundingClientRect();
-            if (scroller) {
-              const containerRect = scroller.getBoundingClientRect();
-              const scale = scroller.clientHeight > 0 ? containerRect.height / scroller.clientHeight : 1;
-              const offset = ((containerRect.bottom - rect.top) / (scale || 1)) * 0.3;
-              setScrollOffset(offset);
-            } else {
-              const sectionTop = rect.top + window.scrollY;
-              const offset = (window.scrollY - sectionTop + window.innerHeight) * 0.3;
-              setScrollOffset(offset);
-            }
-          }
-          ticking = false;
-        });
-        ticking = true;
+    let rafId = 0;
+    let isVisible = true;
+    const scroller = scrollContainerRef?.current ?? null;
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const applyTransform = () => {
+      rafId = 0;
+      if (!sectionRef.current || !isVisible || reducedMotion) return;
+
+      const rect = sectionRef.current.getBoundingClientRect();
+      let rawOffset = 0;
+      if (scroller) {
+        const containerRect = scroller.getBoundingClientRect();
+        const scale = scroller.clientHeight > 0 ? containerRect.height / scroller.clientHeight : 1;
+        rawOffset = ((containerRect.bottom - rect.top) / (scale || 1)) * 0.3;
+      } else {
+        const sectionTop = rect.top + window.scrollY;
+        rawOffset = (window.scrollY - sectionTop + window.innerHeight) * 0.3;
+      }
+
+      // Clamp travel so both rows stay edge-to-edge on 360px through 1920px viewports
+      const offset = Math.max(0, Math.min(700, rawOffset));
+      const x1 = -720 + offset;
+      const x2 = -80 - offset;
+      if (row1Ref.current) {
+        row1Ref.current.style.transform = `translate3d(${x1.toFixed(1)}px, 0, 0)`;
+      }
+      if (row2Ref.current) {
+        row2Ref.current.style.transform = `translate3d(${x2.toFixed(1)}px, 0, 0)`;
       }
     };
 
+    const handleScroll = () => {
+      if (!isVisible || reducedMotion || rafId) return;
+      rafId = window.requestAnimationFrame(applyTransform);
+    };
+
+    let io: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          isVisible = Boolean(entry?.isIntersecting);
+          const wc = isVisible && !reducedMotion ? 'transform' : 'auto';
+          if (row1Ref.current) row1Ref.current.style.willChange = wc;
+          if (row2Ref.current) row2Ref.current.style.willChange = wc;
+          if (isVisible && !rafId) {
+            rafId = window.requestAnimationFrame(applyTransform);
+          }
+        },
+        {
+          root: scroller,
+          rootMargin: '250px 0px',
+        }
+      );
+      io.observe(sectionEl);
+    }
+
     const target: HTMLElement | Window = scroller ?? window;
     target.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+    applyTransform();
 
     return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      io?.disconnect();
       target.removeEventListener('scroll', handleScroll);
     };
   }, [scrollContainerRef]);
 
-  const row1Transform = `translateX(${scrollOffset - 200}px)`;
-  const row2Transform = `translateX(-${scrollOffset - 200}px)`;
+  const cardSizeClass = bezel
+    ? 'w-[420px] h-[270px] min-w-[420px]'
+    : 'w-[280px] h-[180px] min-w-[280px] sm:w-[360px] sm:h-[230px] sm:min-w-[360px] md:w-[420px] md:h-[270px] md:min-w-[420px]';
 
   return (
     <section
@@ -81,25 +119,33 @@ export const MarqueeSection: React.FC = () => {
       className={`relative w-full overflow-hidden bg-[#0C0C0C] ${
         bezel ? 'pt-40' : 'pt-24 sm:pt-32 md:pt-40'
       } pb-10 select-none`}
+      style={{
+        contentVisibility: 'auto',
+        containIntrinsicSize: 'auto 660px',
+      }}
     >
       <div className="flex flex-col gap-3">
         {/* Row 1 - Moves RIGHT on scroll */}
         <div
+          ref={row1Ref}
           className="flex gap-3 w-max"
           style={{
-            transform: row1Transform,
-            willChange: 'transform',
+            transform: 'translate3d(-720px, 0, 0)',
+            backfaceVisibility: 'hidden',
           }}
         >
-          {ROW_1_TRIPLED.map((src, idx) => (
+          {ROW_1_IMAGES.map((src, idx) => (
             <div
               key={`r1-${idx}`}
-              className="relative w-[420px] h-[270px] min-w-[420px] rounded-2xl overflow-hidden bg-[#161616] border border-white/5 shadow-lg group"
+              className={`relative ${cardSizeClass} rounded-2xl overflow-hidden bg-[#161616] border border-white/5 shadow-lg group`}
             >
               <img
                 src={src}
-                alt={`3D showcase ${(idx % ROW_1_IMAGES.length) + 1}`}
+                alt={`3D showcase ${idx + 1}`}
+                width={420}
+                height={270}
                 loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
               />
             </div>
@@ -108,21 +154,25 @@ export const MarqueeSection: React.FC = () => {
 
         {/* Row 2 - Moves LEFT on scroll */}
         <div
+          ref={row2Ref}
           className="flex gap-3 w-max"
           style={{
-            transform: row2Transform,
-            willChange: 'transform',
+            transform: 'translate3d(-80px, 0, 0)',
+            backfaceVisibility: 'hidden',
           }}
         >
-          {ROW_2_TRIPLED.map((src, idx) => (
+          {ROW_2_IMAGES.map((src, idx) => (
             <div
               key={`r2-${idx}`}
-              className="relative w-[420px] h-[270px] min-w-[420px] rounded-2xl overflow-hidden bg-[#161616] border border-white/5 shadow-lg group"
+              className={`relative ${cardSizeClass} rounded-2xl overflow-hidden bg-[#161616] border border-white/5 shadow-lg group`}
             >
               <img
                 src={src}
-                alt={`3D showcase ${(idx % ROW_2_IMAGES.length) + 1}`}
+                alt={`3D showcase ${idx + 1}`}
+                width={420}
+                height={270}
                 loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
               />
             </div>
@@ -131,6 +181,8 @@ export const MarqueeSection: React.FC = () => {
       </div>
     </section>
   );
-};
+});
+
+MarqueeSection.displayName = 'MarqueeSection';
 
 export default MarqueeSection;

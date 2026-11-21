@@ -1,8 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Sparkles, Layers, Palette } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { ProjectData } from './ProjectCard';
-import LiveProjectButton from './LiveProjectButton';
 
 interface ProjectModalProps {
   project: ProjectData | null;
@@ -10,7 +9,7 @@ interface ProjectModalProps {
   onOpenContact: () => void;
 }
 
-export const ProjectModal: React.FC<ProjectModalProps> = ({
+export const ProjectModal: React.FC<ProjectModalProps> = React.memo(({
   project,
   onClose,
   onOpenContact,
@@ -81,26 +80,46 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           {/* Image Showcase Grid */}
           <div className="space-y-4 sm:space-y-6 mb-8">
             <div className="rounded-[28px] sm:rounded-[36px] overflow-hidden border border-white/10 max-h-[460px] bg-[#161616]">
-              <img
-                src={project.col2Img}
-                alt={project.name}
-                className="w-full h-full object-cover"
-              />
+              <picture className="block w-full h-full">
+                {project.col2ImgWebp && (
+                  <source srcSet={project.col2ImgWebp} type="image/webp" />
+                )}
+                <img
+                  src={project.col2Img}
+                  alt={project.name}
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              </picture>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-[24px] overflow-hidden border border-white/10 h-64 sm:h-72 bg-[#161616]">
-                <img
-                  src={project.col1Img1}
-                  alt={`${project.name} detail`}
-                  className="w-full h-full object-cover"
-                />
+                <picture className="block w-full h-full">
+                  {project.col1Img1Webp && (
+                    <source srcSet={project.col1Img1Webp} type="image/webp" />
+                  )}
+                  <img
+                    src={project.col1Img1}
+                    alt={`${project.name} detail`}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
+                </picture>
               </div>
               <div className="rounded-[24px] overflow-hidden border border-white/10 h-64 sm:h-72 bg-[#161616]">
-                <img
-                  src={project.col1Img2}
-                  alt={`${project.name} workflow details`}
-                  className="w-full h-full object-cover"
-                />
+                <picture className="block w-full h-full">
+                  {project.col1Img2Webp && (
+                    <source srcSet={project.col1Img2Webp} type="image/webp" />
+                  )}
+                  <img
+                    src={project.col1Img2}
+                    alt={`${project.name} workflow details`}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
+                </picture>
               </div>
             </div>
           </div>
@@ -136,6 +155,6 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       </div>
     </AnimatePresence>
   );
-};
+});
 
 export default ProjectModal;

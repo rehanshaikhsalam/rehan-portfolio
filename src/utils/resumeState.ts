@@ -22,7 +22,8 @@ export interface ResumeState {
   updatedAt: number;
 }
 
-const STORAGE_KEY = 'rehan_portfolio_resume_state_v1';
+const STORAGE_KEY = 'rehan_portfolio_resume_state_v2';
+const FLUSH_EVENT_NAME = 'rehan:portfolio-flush-scroll';
 
 export const DEFAULT_CONTACT_DRAFT: ContactDraft = {
   name: '',
@@ -49,6 +50,28 @@ export const DEFAULT_RESUME_STATE: ResumeState = {
 };
 
 let memoryFallback: ResumeState | null = null;
+let pendingScrollRestore = false;
+
+export function markPendingScrollRestore(): void {
+  pendingScrollRestore = true;
+}
+
+export function consumePendingScrollRestore(): boolean {
+  const value = pendingScrollRestore;
+  pendingScrollRestore = false;
+  return value;
+}
+
+export function dispatchFlushScroll(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(FLUSH_EVENT_NAME));
+}
+
+export function subscribeFlushScroll(onFlush: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener(FLUSH_EVENT_NAME, onFlush);
+  return () => window.removeEventListener(FLUSH_EVENT_NAME, onFlush);
+}
 
 function mergeState(raw: Partial<ResumeState> | null | undefined): ResumeState {
   if (!raw || typeof raw !== 'object') {
@@ -95,21 +118,19 @@ export function loadResumeState(): ResumeState {
     return mergeState(null);
   }
 
-  for (const store of [
-    () => window.localStorage,
-    () => window.sessionStorage,
-  ]) {
-    try {
-      const s = store();
-      const raw = s.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = mergeState(JSON.parse(raw) as Partial<ResumeState>);
-        memoryFallback = parsed;
-        return parsed;
-      }
-    } catch {
-      // Ignore storage access restrictions and try fallback
+  if (memoryFallback) {
+    return memoryFallback;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = mergeState(JSON.parse(raw) as Partial<ResumeState>);
+      memoryFallback = parsed;
+      return parsed;
     }
+  } catch {
+    // Ignore storage access restrictions and use memory fallback
   }
 
   return mergeState(memoryFallback);
@@ -123,16 +144,10 @@ export function saveResumeState(next: ResumeState): ResumeState {
     return normalized;
   }
 
-  const serialized = JSON.stringify(normalized);
-  for (const store of [
-    () => window.localStorage,
-    () => window.sessionStorage,
-  ]) {
-    try {
-      store().setItem(STORAGE_KEY, serialized);
-    } catch {
-      // Ignore storage quota/access restrictions
-    }
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  } catch {
+    // Ignore storage quota/access restrictions
   }
 
   return normalized;
@@ -155,23 +170,15 @@ export function patchResumeState(
 export function subscribeResumeSync(onSync: (state: ResumeState) => void): () => void {
   if (typeof window === 'undefined') return () => {};
 
-  const handleStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) {
-      onSync(loadResumeState());
-    }
-  };
-
   const handleMessage = (e: MessageEvent) => {
     if (e.data && e.data.type === 'PORTFOLIO_SYNC') {
       onSync(loadResumeState());
     }
   };
 
-  window.addEventListener('storage', handleStorage);
   window.addEventListener('message', handleMessage);
 
   return () => {
-    window.removeEventListener('storage', handleStorage);
     window.removeEventListener('message', handleMessage);
   };
 }

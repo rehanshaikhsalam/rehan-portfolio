@@ -9,8 +9,11 @@ export interface ProjectData {
   category: string;
   tagline: string;
   col1Img1: string;
+  col1Img1Webp?: string;
   col1Img2: string;
+  col1Img2Webp?: string;
   col2Img: string;
+  col2ImgWebp?: string;
   liveUrl?: string;
   role?: string;
   clientType?: string;
@@ -24,7 +27,7 @@ interface ProjectCardProps {
   onSelectProject: (project: ProjectData) => void;
 }
 
-export const ProjectCard: React.FC<ProjectCardProps> = ({
+export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({
   project,
   index,
   totalCards,
@@ -45,7 +48,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
     <div
       ref={containerRef}
       className={`${
-        bezel ? 'h-[735px] min-h-[720px]' : 'h-[85vh] min-h-[640px] md:min-h-[720px]'
+        bezel
+          ? 'h-[735px] min-h-[720px]'
+          : 'min-h-[820px] pb-10 sm:pb-0 sm:h-[85svh] sm:min-h-[720px]'
       } flex items-start justify-center relative`}
     >
       <motion.div
@@ -53,6 +58,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           top: `calc(5.5rem + ${index * 28}px)`,
           scale,
           transformOrigin: 'top center',
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
         }}
         className={`sticky w-full ${
           bezel
@@ -115,14 +122,20 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               style={{ height: bezel ? '204.8px' : 'clamp(130px, 16vw, 230px)' }}
               onClick={() => onSelectProject(project)}
             >
-              <img
-                src={project.col1Img1}
-                alt={`${project.name} asset 1`}
-                loading="lazy"
-                className={`w-full h-full object-cover ${
-                  bezel ? 'rounded-[50px]' : 'rounded-[30px] sm:rounded-[40px] md:rounded-[50px]'
-                } transition-transform duration-700 group-hover:scale-105`}
-              />
+              <picture className="block w-full h-full">
+                {project.col1Img1Webp && (
+                  <source srcSet={project.col1Img1Webp} type="image/webp" />
+                )}
+                <img
+                  src={project.col1Img1}
+                  alt={`${project.name} asset 1`}
+                  loading="lazy"
+                  decoding="async"
+                  className={`w-full h-full object-cover ${
+                    bezel ? 'rounded-[50px]' : 'rounded-[30px] sm:rounded-[40px] md:rounded-[50px]'
+                  } transition-transform duration-700 group-hover:scale-105`}
+                />
+              </picture>
             </div>
             <div
               className={`overflow-hidden ${
@@ -131,14 +144,20 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               style={{ height: bezel ? '281.6px' : 'clamp(160px, 22vw, 340px)' }}
               onClick={() => onSelectProject(project)}
             >
-              <img
-                src={project.col1Img2}
-                alt={`${project.name} asset 2`}
-                loading="lazy"
-                className={`w-full h-full object-cover ${
-                  bezel ? 'rounded-[50px]' : 'rounded-[30px] sm:rounded-[40px] md:rounded-[50px]'
-                } transition-transform duration-700 group-hover:scale-105`}
-              />
+              <picture className="block w-full h-full">
+                {project.col1Img2Webp && (
+                  <source srcSet={project.col1Img2Webp} type="image/webp" />
+                )}
+                <img
+                  src={project.col1Img2}
+                  alt={`${project.name} asset 2`}
+                  loading="lazy"
+                  decoding="async"
+                  className={`w-full h-full object-cover ${
+                    bezel ? 'rounded-[50px]' : 'rounded-[30px] sm:rounded-[40px] md:rounded-[50px]'
+                  } transition-transform duration-700 group-hover:scale-105`}
+                />
+              </picture>
             </div>
           </div>
 
@@ -150,19 +169,25 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             style={{ minHeight: bezel ? '512px' : 'clamp(280px, 40vw, 580px)' }}
             onClick={() => onSelectProject(project)}
           >
-            <img
-              src={project.col2Img}
-              alt={`${project.name} featured display`}
-              loading="lazy"
-              className={`w-full h-full object-cover ${
-                bezel ? 'rounded-[50px]' : 'rounded-[30px] sm:rounded-[40px] md:rounded-[50px]'
-              } transition-transform duration-700 group-hover:scale-105`}
-            />
+            <picture className="block w-full h-full">
+              {project.col2ImgWebp && (
+                <source srcSet={project.col2ImgWebp} type="image/webp" />
+              )}
+              <img
+                src={project.col2Img}
+                alt={`${project.name} featured display`}
+                loading="lazy"
+                decoding="async"
+                className={`w-full h-full object-cover ${
+                  bezel ? 'rounded-[50px]' : 'rounded-[30px] sm:rounded-[40px] md:rounded-[50px]'
+                } transition-transform duration-700 group-hover:scale-105`}
+              />
+            </picture>
           </div>
         </div>
       </motion.div>
     </div>
   );
-};
+});
 
 export default ProjectCard;

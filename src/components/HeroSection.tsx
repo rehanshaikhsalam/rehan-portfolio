@@ -9,7 +9,7 @@ interface HeroSectionProps {
   onOpenResume: () => void;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenResume }) => {
+export const HeroSection: React.FC<HeroSectionProps> = React.memo(({ onOpenContact, onOpenResume }) => {
   const { embedded, bezel, containerRef: scrollContainerRef } = usePortfolioScroll();
   const scrollTo = (id: string) => {
     const scroller = scrollContainerRef?.current;
@@ -26,11 +26,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenR
   return (
     <section
       className={`relative ${
-        embedded ? 'h-full' : 'h-screen'
+        embedded ? 'h-full' : 'h-[100svh]'
       } min-h-[660px] flex flex-col justify-between overflow-x-clip bg-[#0C0C0C]`}
     >
       {/* Navbar */}
-      <FadeIn delay={0} y={-20} as="header" className="relative w-full z-30">
+      <FadeIn immediate delay={0} y={-20} as="header" className="relative w-full z-30">
         <nav
           className={`flex items-center justify-between ${
             bezel ? 'px-10 pt-8' : 'px-5 sm:px-6 md:px-10 pt-6 md:pt-8'
@@ -60,7 +60,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenR
           bezel ? '-mt-5' : 'mt-6 sm:mt-4 md:-mt-5'
         }`}
       >
-        <FadeIn delay={0.15} y={40}>
+        <FadeIn immediate delay={0.1} y={32}>
           <h1
             className={`hero-heading font-black uppercase tracking-tight leading-none whitespace-nowrap w-full ${
               bezel
@@ -81,23 +81,38 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenR
             : 'top-1/2 -translate-y-1/2 sm:top-auto sm:translate-y-0 sm:bottom-0'
         }`}
       >
-        <FadeIn delay={0.6} y={30}>
+        <FadeIn immediate delay={0.25} y={24}>
           <Magnet
             padding={150}
             strength={3}
             activeTransition="transform 0.3s ease-out"
             inactiveTransition="transform 0.6s ease-in-out"
           >
-            <img
-              src={withBaseUrl('assets/aistudio/rehan_cutout.png')}
-              alt="Rehan Shaikh - AI Automation & No-Code Specialist"
-              className={`${
-                bezel
-                  ? 'w-[520px] max-h-[623px]'
-                  : 'w-[280px] sm:w-[360px] md:w-[440px] lg:w-[520px] max-h-[72vh]'
-              } h-auto object-contain drop-shadow-2xl select-none pointer-events-none`}
-              draggable={false}
-            />
+            <picture>
+              <source
+                type="image/webp"
+                srcSet={
+                  bezel
+                    ? withBaseUrl('assets/aistudio/rehan_cutout-1040.webp')
+                    : `${withBaseUrl('assets/aistudio/rehan_cutout-560.webp')} 560w, ${withBaseUrl('assets/aistudio/rehan_cutout-1040.webp')} 1040w`
+                }
+                sizes={bezel ? '520px' : '(max-width: 640px) 280px, (max-width: 1024px) 440px, 520px'}
+              />
+              <img
+                src={withBaseUrl('assets/aistudio/rehan_cutout.png')}
+                alt="Rehan Shaikh - AI Automation & No-Code Specialist"
+                width={1040}
+                height={1191}
+                fetchPriority="high"
+                decoding="async"
+                className={`${
+                  bezel
+                    ? 'w-[520px] max-h-[623px]'
+                    : 'w-[280px] sm:w-[360px] md:w-[440px] lg:w-[520px] max-h-[72svh]'
+                } h-auto object-contain drop-shadow-2xl select-none pointer-events-none`}
+                draggable={false}
+              />
+            </picture>
           </Magnet>
         </FadeIn>
       </div>
@@ -109,7 +124,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenR
         } z-20 relative`}
       >
         {/* Left paragraph */}
-        <FadeIn delay={0.35} y={20}>
+        <FadeIn immediate delay={0.2} y={20}>
           <p
             className={`text-[#D7E2EA] font-light uppercase tracking-wide leading-snug ${
               bezel ? 'max-w-[260px]' : 'max-w-[160px] sm:max-w-[220px] md:max-w-[260px]'
@@ -121,12 +136,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenContact, onOpenR
         </FadeIn>
 
         {/* Right Contact Button */}
-        <FadeIn delay={0.5} y={20}>
+        <FadeIn immediate delay={0.3} y={20}>
           <ContactButton onClick={onOpenContact} />
         </FadeIn>
       </div>
     </section>
   );
-};
+});
+
+HeroSection.displayName = 'HeroSection';
 
 export default HeroSection;

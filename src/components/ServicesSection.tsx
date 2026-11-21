@@ -41,7 +41,7 @@ const SERVICES: ServiceItem[] = [
   },
 ];
 
-export const ServicesSection: React.FC = () => {
+export const ServicesSection: React.FC = React.memo(() => {
   const { bezel } = usePortfolioScroll();
 
   return (
@@ -116,6 +116,8 @@ export const ServicesSection: React.FC = () => {
       </div>
     </section>
   );
-};
+});
+
+ServicesSection.displayName = 'ServicesSection';
 
 export default ServicesSection;

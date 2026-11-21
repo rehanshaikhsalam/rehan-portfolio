@@ -8,7 +8,7 @@ interface FooterProps {
   onOpenResume: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) => {
+export const Footer: React.FC<FooterProps> = React.memo(({ onOpenContact, onOpenResume }) => {
   const { containerRef: scrollContainerRef, bezel } = usePortfolioScroll();
   const scrollToTop = () => {
     if (scrollContainerRef?.current) {
@@ -24,6 +24,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) =
       className={`relative bg-[#0C0C0C] text-[#D7E2EA] ${
         bezel ? 'px-10 py-20' : 'px-6 md:px-10 py-16 sm:py-20'
       } border-t border-white/10 z-10`}
+      style={{ contain: 'layout style' }}
     >
       <div
         className={`max-w-6xl mx-auto flex ${
@@ -98,6 +99,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact, onOpenResume }) =
       </div>
     </footer>
   );
-};
+});
+
+Footer.displayName = 'Footer';
 
 export default Footer;

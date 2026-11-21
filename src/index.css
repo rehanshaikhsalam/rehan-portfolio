@@ -32,6 +32,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  button, a {
+    touch-action: manipulation;
+  }
+}
+
+[data-portfolio-scroll="true"] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 html.haldoren-mode,
@@ -346,6 +355,7 @@ body.is-case .haldoren-screen {
   height: 866px;
   transform: scale(0.69875);
   transform-origin: 0 0;
+  backface-visibility: hidden;
   border: none;
   display: block;
   overflow: hidden;
@@ -575,6 +585,10 @@ body.is-case .haldoren-expand-btn {
   }
   .haldoren-stage.m-case::before {
     opacity: 1;
+  }
+
+  .haldoren-frame.glide {
+    transition: transform var(--glide) cubic-bezier(.65, 0, .35, 1);
   }
 
   .haldoren-frame svg.haldoren-wm,

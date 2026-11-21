@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { motion, useScroll, useTransform, type MotionValue } from 'framer-motion';
 import { usePortfolioScroll } from '../utils/portfolioScrollContext';
 
@@ -7,82 +7,57 @@ interface AnimatedTextProps {
   className?: string;
 }
 
-interface CharProps {
-  char: string;
+interface WordProps {
+  word: string;
   progress: MotionValue<number>;
   range: [number, number];
 }
 
-const Character: React.FC<CharProps> = ({ char, progress, range }) => {
+const Word: React.FC<WordProps> = React.memo(({ word, progress, range }) => {
   const opacity = useTransform(progress, range, [0.2, 1]);
 
   return (
-    <span className="relative inline-block">
-      <span className="opacity-0 select-none">{char === ' ' ? '\u00A0' : char}</span>
-      <motion.span
-        style={{ opacity }}
-        className="absolute inset-0 select-none"
-      >
-        {char === ' ' ? '\u00A0' : char}
-      </motion.span>
-    </span>
+    <motion.span style={{ opacity }} className="inline-block mr-[0.28em] select-none">
+      {word}
+    </motion.span>
   );
-};
+});
 
-export const AnimatedText: React.FC<AnimatedTextProps> = ({ text, className = '' }) => {
+Word.displayName = 'Word';
+
+export const AnimatedText: React.FC<AnimatedTextProps> = React.memo(({ text, className = '' }) => {
   const containerRef = useRef<HTMLParagraphElement>(null);
   const { containerRef: scrollContainerRef } = usePortfolioScroll();
   const { scrollYProgress } = useScroll({
     target: containerRef,
     ...(scrollContainerRef ? { container: scrollContainerRef } : {}),
-    offset: ['start 0.8', 'end 0.2'],
+    offset: ['start 0.85', 'end 0.35'],
   });
 
-  const totalChars = text.length;
-  const words = text.split(' ');
-
-  let currentGlobalCharIndex = 0;
+  const wordItems = useMemo(() => {
+    const split = text.split(' ');
+    const total = split.length;
+    return split.map((word, index) => {
+      const start = index / total;
+      const end = Math.min(1, start + 1.5 / total);
+      return { word, range: [start, end] as [number, number] };
+    });
+  }, [text]);
 
   return (
     <p ref={containerRef} className={`relative flex flex-wrap justify-center ${className}`}>
-      {words.map((word, wordIndex) => {
-        const wordChars = word.split('');
-        const isLastWord = wordIndex === words.length - 1;
-
-        return (
-          <span key={wordIndex} className="inline-block whitespace-nowrap">
-            {wordChars.map((char) => {
-              const charIndex = currentGlobalCharIndex++;
-              const start = charIndex / totalChars;
-              const end = Math.min(1, start + 1 / totalChars);
-
-              return (
-                <Character
-                  key={charIndex}
-                  char={char}
-                  progress={scrollYProgress}
-                  range={[start, end]}
-                />
-              );
-            })}
-            {!isLastWord && (() => {
-              const spaceIndex = currentGlobalCharIndex++;
-              const start = spaceIndex / totalChars;
-              const end = Math.min(1, start + 1 / totalChars);
-              return (
-                <Character
-                  key={spaceIndex}
-                  char=" "
-                  progress={scrollYProgress}
-                  range={[start, end]}
-                />
-              );
-            })()}
-          </span>
-        );
-      })}
+      {wordItems.map((item, wordIndex) => (
+        <Word
+          key={wordIndex}
+          word={item.word}
+          progress={scrollYProgress}
+          range={item.range}
+        />
+      ))}
     </p>
   );
-};
+});
+
+AnimatedText.displayName = 'AnimatedText';
 
 export default AnimatedText;

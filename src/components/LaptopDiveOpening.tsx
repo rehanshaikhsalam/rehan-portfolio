@@ -1,32 +1,41 @@
-import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import React, { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
-import ContactModal from './ContactModal';
-import PortfolioExperience from './PortfolioExperience';
-import { patchResumeState } from '../utils/resumeState';
+import {
+  dispatchFlushScroll,
+  markPendingScrollRestore,
+  patchResumeState,
+} from '../utils/resumeState';
 
-const HX = (u: string) =>
-  'https://images.higgs.ai/?default=1&output=webp&url=' + encodeURIComponent(u) + '&w=2048&q=85';
+const ContactModal = lazy(() => import('./ContactModal'));
+const PortfolioExperience = lazy(() => import('./PortfolioExperience'));
+
+const HX = (u: string, w: number, q: number) =>
+  `https://images.higgs.ai/?default=1&output=webp&url=${encodeURIComponent(u)}&w=${w}&q=${q}`;
 const CF = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/';
 
-const ASSETS = {
-  plate: HX(CF + 'hf_20261111_001031_a09dc558-2c69-4e05-83a4-5f01ebdd1363.png'),
-  casePlate: HX(CF + 'hf_20261111_001031_4a7c3fd9-2168-4219-9736-096a17bbb0e2.png'),
-  cut: HX(CF + 'hf_20261111_001143_ec356b1a-50a2-4b50-82fc-e346c914a406.png'),
-  badge:
-    'https://images.higgs.ai/?default=1&output=webp&url=' +
-    encodeURIComponent(CF + 'hf_20261111_001143_65c037e6-0768-4b12-9f17-17be132ce16b.png') +
-    '&w=1200&q=85',
-  trans: CF + 'hf_20261111_001144_2b054228-95af-41d5-922d-b02979fe485b.mp4',
-};
+function getStudioAssets(isMobile: boolean) {
+  const plateW = isMobile ? 1080 : 2048;
+  const plateQ = isMobile ? 80 : 85;
+  const badgeW = isMobile ? 640 : 1200;
+  return {
+    plate: HX(CF + 'hf_20261111_001031_a09dc558-2c69-4e05-83a4-5f01ebdd1363.png', plateW, plateQ),
+    casePlate: HX(CF + 'hf_20261111_001031_4a7c3fd9-2168-4219-9736-096a17bbb0e2.png', plateW, plateQ),
+    cut: HX(CF + 'hf_20261111_001143_ec356b1a-50a2-4b50-82fc-e346c914a406.png', plateW, plateQ),
+    badge: HX(CF + 'hf_20261111_001143_65c037e6-0768-4b12-9f17-17be132ce16b.png', badgeW, plateQ),
+    trans: CF + 'hf_20261111_001144_2b054228-95af-41d5-922d-b02979fe485b.mp4',
+  };
+}
 
 const EASE = 'cubic-bezier(.2,.8,.2,1)';
 
-const BadgeCardContent: React.FC<{ isMain?: boolean; onHitEnter?: () => void }> = ({
-  isMain,
-  onHitEnter,
-}) => (
+const BadgeCardContent: React.FC<{
+  badgeSrc: string;
+  cutSrc: string;
+  isMain?: boolean;
+  onHitEnter?: () => void;
+}> = React.memo(({ badgeSrc, cutSrc, isMain, onHitEnter }) => (
   <>
-    <img src={ASSETS.badge} alt="" decoding="async" />
+    <img src={badgeSrc} alt="" decoding="async" />
     <div className="haldoren-card">
       <h4>
         AI AUTOMATION &amp;
@@ -39,7 +48,7 @@ const BadgeCardContent: React.FC<{ isMain?: boolean; onHitEnter?: () => void }> 
       <div className="haldoren-role">AI AUTOMATION &amp; NO-CODE</div>
       <div
         className="haldoren-ph"
-        style={{ backgroundImage: `url("${ASSETS.cut}")` }}
+        style={{ backgroundImage: `url("${cutSrc}")` }}
       />
       <div className="haldoren-row">
         <span>NAME</span>
@@ -66,11 +75,18 @@ const BadgeCardContent: React.FC<{ isMain?: boolean; onHitEnter?: () => void }> 
       />
     )}
   </>
-);
+));
+
+BadgeCardContent.displayName = 'BadgeCardContent';
 
 export const LaptopDiveOpening: React.FC = () => {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isCaseMounted, setIsCaseMounted] = useState(false);
+  const [isMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 820 : false
+  );
+  const assets = useMemo(() => getStudioAssets(isMobileViewport), [isMobileViewport]);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -96,7 +112,22 @@ export const LaptopDiveOpening: React.FC = () => {
   const transReadyRef = useRef(false);
   const enteredRef = useRef(false);
   const wheelLockRef = useRef(0);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchStartRef = useRef<{
+    x: number;
+    y: number;
+    scrollTop: number;
+    inScroller: boolean;
+  } | null>(null);
+  const timersRef = useRef<Set<number>>(new Set());
+
+  const scheduleTimer = useCallback((fn: () => void, ms: number) => {
+    const id = window.setTimeout(() => {
+      timersRef.current.delete(id);
+      fn();
+    }, ms);
+    timersRef.current.add(id);
+    return id;
+  }, []);
 
   const rmRef = useRef(
     typeof window !== 'undefined' &&
@@ -118,7 +149,7 @@ export const LaptopDiveOpening: React.FC = () => {
   }, []);
 
   const startSway = useCallback(() => {
-    if (rmRef.current || !badgeRef.current) return;
+    if (rmRef.current || !badgeRef.current || window.innerWidth <= 820 || document.hidden) return;
     stopSway();
     swayAnimRef.current = badgeRef.current.animate(
       [{ transform: 'rotate(-1.1deg)' }, { transform: 'rotate(1.1deg)' }],
@@ -268,18 +299,17 @@ export const LaptopDiveOpening: React.FC = () => {
   }, []);
 
   const openExpanded = useCallback(() => {
-    window.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
+    dispatchFlushScroll();
+    markPendingScrollRestore();
     setIsExpanded(true);
     patchResumeState({ isExpanded: true });
   }, []);
 
   const closeExpanded = useCallback(() => {
-    window.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
+    dispatchFlushScroll();
+    markPendingScrollRestore();
     setIsExpanded(false);
     patchResumeState({ isExpanded: false });
-    requestAnimationFrame(() => {
-      window.postMessage({ type: 'PORTFOLIO_SYNC' }, '*');
-    });
   }, []);
 
   useLayoutEffect(() => {
@@ -291,24 +321,50 @@ export const LaptopDiveOpening: React.FC = () => {
     place('hero');
     patchResumeState({ mode: 'hero', isExpanded: false, studioContactOpen: false });
 
+    let resizeRaf = 0;
     const onResize = () => {
-      frameRef.current?.classList.remove('glide');
-      place(modeRef.current);
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        frameRef.current?.classList.remove('glide');
+        place(modeRef.current);
+      });
     };
-    window.addEventListener('resize', onResize);
+    window.addEventListener('resize', onResize, { passive: true });
 
     return () => {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       window.removeEventListener('resize', onResize);
+      timersRef.current.forEach((id) => window.clearTimeout(id));
+      timersRef.current.clear();
       document.documentElement.classList.remove('haldoren-mode');
       document.body.classList.remove('haldoren-mode', 'is-case', 'haldoren-busy');
     };
   }, [place]);
 
+  // Pause lanyard sway when tab is hidden to save battery/CPU
+  useEffect(() => {
+    const onVisChange = () => {
+      if (document.hidden) {
+        stopSway();
+      } else if (modeRef.current === 'hero' && !busyRef.current && enteredRef.current) {
+        startSway();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisChange);
+    return () => document.removeEventListener('visibilitychange', onVisChange);
+  }, [startSway, stopSway]);
+
+  // Defer transition video prefetch & PortfolioExperience chunk warmup until idle after hero renders
   useEffect(() => {
     const trans = transRef.current;
     if (!trans) return;
 
+    let cancelled = false;
     let blobUrl: string | null = null;
+    let idleTimer = 0;
+    let idleHandle: number | null = null;
+
     const onLoaded = () => {
       transReadyRef.current = true;
       try {
@@ -319,24 +375,61 @@ export const LaptopDiveOpening: React.FC = () => {
     };
     trans.addEventListener('loadeddata', onLoaded, { once: true });
 
-    fetch(ASSETS.trans)
-      .then((res) => {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.blob();
-      })
-      .then((blob) => {
-        blobUrl = URL.createObjectURL(blob);
-        trans.src = blobUrl;
-      })
-      .catch(() => {
-        trans.src = ASSETS.trans;
-      });
+    const startPrefetch = () => {
+      if (cancelled) return;
+      // Warm up PortfolioExperience JS chunk silently in background
+      void import('./PortfolioExperience');
+
+      // Respect Data Saver or very slow mobile connections for transition video
+      const navConn = (
+        navigator as Navigator & {
+          connection?: { saveData?: boolean; effectiveType?: string };
+        }
+      ).connection;
+      if (
+        navConn?.saveData ||
+        navConn?.effectiveType === '2g' ||
+        navConn?.effectiveType === 'slow-2g'
+      ) {
+        return;
+      }
+
+      fetch(assets.trans)
+        .then((res) => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.blob();
+        })
+        .then((blob) => {
+          if (cancelled) return;
+          blobUrl = URL.createObjectURL(blob);
+          trans.src = blobUrl;
+        })
+        .catch(() => {
+          if (!cancelled) trans.src = assets.trans;
+        });
+    };
+
+    const delayMs = isMobileViewport ? 1800 : 800;
+    idleTimer = window.setTimeout(() => {
+      const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+      if (typeof ric === 'function') {
+        idleHandle = ric(startPrefetch, { timeout: 2500 });
+      } else {
+        startPrefetch();
+      }
+    }, delayMs);
 
     return () => {
+      cancelled = true;
+      window.clearTimeout(idleTimer);
+      const cic = (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      if (idleHandle !== null && typeof cic === 'function') {
+        cic(idleHandle);
+      }
       trans.removeEventListener('loadeddata', onLoaded);
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, []);
+  }, [assets.trans, isMobileViewport]);
 
   useEffect(() => {
     const runEntrance = () => {
@@ -467,13 +560,14 @@ export const LaptopDiveOpening: React.FC = () => {
 
   const triggerFlash = useCallback((peak: number, duration: number) => {
     if (rmRef.current || !flashRef.current) return;
+    flashRef.current.getAnimations().forEach((a) => a.cancel());
     flashRef.current.animate(
       [
         { opacity: 0, offset: 0 },
         { opacity: peak, offset: 0.25 },
         { opacity: 0, offset: 1 },
       ],
-      { duration, easing: 'ease-out', fill: 'both' }
+      { duration, easing: 'ease-out', fill: 'none' }
     );
   }, []);
 
@@ -487,6 +581,7 @@ export const LaptopDiveOpening: React.FC = () => {
       badgeRef.current,
       mBadgeRef.current,
     ];
+    els.forEach((el) => el?.getAnimations().forEach((a) => a.cancel()));
     if (rmRef.current) {
       els.forEach((el) => {
         if (el) el.style.opacity = '0';
@@ -522,17 +617,19 @@ export const LaptopDiveOpening: React.FC = () => {
   }, [stopSway]);
 
   const heroIn = useCallback(() => {
+    const els = [
+      wmRef.current,
+      mWmRef.current,
+      scriptRef.current,
+      mScriptRef.current,
+      badgeRef.current,
+      mBadgeRef.current,
+    ];
+    els.forEach((el) => el?.getAnimations().forEach((a) => a.cancel()));
+
     if (rmRef.current) {
-      [
-        wmRef.current,
-        mWmRef.current,
-        scriptRef.current,
-        mScriptRef.current,
-        badgeRef.current,
-        mBadgeRef.current,
-      ].forEach((el) => {
+      els.forEach((el) => {
         if (!el) return;
-        el.getAnimations().forEach((a) => a.cancel());
         el.style.opacity = '1';
         el.style.transform = '';
         el.style.clipPath = '';
@@ -591,30 +688,29 @@ export const LaptopDiveOpening: React.FC = () => {
       screenRef.current.getAnimations().forEach((a) => a.cancel());
       screenRef.current.style.opacity = '1';
     }
-    triggerFlash(0.55, 600);
+    triggerFlash(0.28, 420);
 
     if (screenWrapRef.current) {
       screenWrapRef.current.getAnimations().forEach((a) => a.cancel());
       screenWrapRef.current.style.opacity = '1';
       screenWrapRef.current.style.transform = 'scale(1)';
       if (!rmRef.current) {
-        screenWrapRef.current.animate(
+        const anim = screenWrapRef.current.animate(
           [
-            { opacity: 0, transform: 'scale(1.06)' },
+            { opacity: 0, transform: 'scale(1.04)' },
             { opacity: 1, transform: 'scale(1)' },
           ],
-          { duration: 700, easing: EASE, fill: 'both' }
+          { duration: 550, easing: EASE, fill: 'none' }
         );
+        anim.finished.catch(() => {});
       }
     }
 
-    window.postMessage({ type: 'PORTFOLIO_SYNC' }, '*');
-
-    setTimeout(() => {
+    scheduleTimer(() => {
       frameRef.current?.classList.remove('glide');
       setBusy(false);
-    }, dur(700));
-  }, [dur, setBusy, triggerFlash]);
+    }, dur(560));
+  }, [dur, scheduleTimer, setBusy, triggerFlash]);
 
   const playTransitionClip = useCallback(() => {
     return new Promise<void>((resolve) => {
@@ -658,9 +754,17 @@ export const LaptopDiveOpening: React.FC = () => {
   const toCase = useCallback(() => {
     if (busyRef.current || modeRef.current !== 'hero') return;
     setBusy(true);
+    setIsCaseMounted(true);
     heroOut();
 
-    setTimeout(() => {
+    // Ensure caseplate image is decoded before the transition video finishes
+    const caseplatePreload = caseplateRef.current;
+    const caseplateDecoded =
+      caseplatePreload && typeof caseplatePreload.decode === 'function'
+        ? caseplatePreload.decode().catch(() => {})
+        : Promise.resolve();
+
+    scheduleTimer(() => {
       const trans = transRef.current;
       const caseplate = caseplateRef.current;
       const plate = plateRef.current;
@@ -672,14 +776,18 @@ export const LaptopDiveOpening: React.FC = () => {
           if (caseplate) caseplate.style.opacity = '1';
           arriveCase();
         } else if (caseplate) {
-          caseplate
-            .animate([{ opacity: 0 }, { opacity: 1 }], {
-              duration: 500,
-              easing: EASE,
-              fill: 'both',
-            })
-            .finished.then(arriveCase)
-            .catch(arriveCase);
+          caseplateDecoded.then(() => {
+            caseplate.getAnimations().forEach((a) => a.cancel());
+            caseplate.style.opacity = '1';
+            caseplate
+              .animate([{ opacity: 0 }, { opacity: 1 }], {
+                duration: 450,
+                easing: EASE,
+                fill: 'none',
+              })
+              .finished.then(arriveCase)
+              .catch(arriveCase);
+          });
         } else {
           arriveCase();
         }
@@ -720,7 +828,8 @@ export const LaptopDiveOpening: React.FC = () => {
       frameRef.current?.classList.add('glide');
       place('case');
 
-      clipPromise.then(() => {
+      Promise.all([clipPromise, caseplateDecoded]).then(() => {
+        if (modeRef.current !== 'hero') return;
         trans.pause();
         if (caseplate) {
           caseplate.getAnimations().forEach((a) => a.cancel());
@@ -730,12 +839,12 @@ export const LaptopDiveOpening: React.FC = () => {
         arriveCase();
       });
     }, dur(330));
-  }, [arriveCase, dur, heroOut, place, playTransitionClip, setBusy]);
+  }, [arriveCase, dur, heroOut, place, playTransitionClip, scheduleTimer, setBusy]);
 
   const toHero = useCallback(() => {
     if (busyRef.current || modeRef.current !== 'case') return;
     setBusy(true);
-    window.postMessage({ type: 'PORTFOLIO_FLUSH_SCROLL' }, '*');
+    dispatchFlushScroll();
     setIsExpanded(false);
     patchResumeState({ mode: 'hero', isExpanded: false });
 
@@ -803,20 +912,26 @@ export const LaptopDiveOpening: React.FC = () => {
       return;
     }
 
+    const isMobileNow = window.innerWidth <= 820;
+
     caseplate?.animate(
-      [
-        { opacity: 1, filter: 'blur(0px)' },
-        { opacity: 0, filter: 'blur(12px)' },
-      ],
-      { duration: 800, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' }
+      isMobileNow
+        ? [{ opacity: 1 }, { opacity: 0 }]
+        : [
+            { opacity: 1, filter: 'blur(0px)' },
+            { opacity: 0, filter: 'blur(12px)' },
+          ],
+      { duration: isMobileNow ? 550 : 800, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' }
     );
 
-    const zoomOutKeyframes = [
-      { transform: 'scale(1.12)', filter: 'blur(8px)' },
-      { transform: 'scale(1)', filter: 'blur(0px)' },
-    ];
+    const zoomOutKeyframes = isMobileNow
+      ? [{ transform: 'scale(1.08)' }, { transform: 'scale(1)' }]
+      : [
+          { transform: 'scale(1.12)', filter: 'blur(8px)' },
+          { transform: 'scale(1)', filter: 'blur(0px)' },
+        ];
     const zoomOutOptions: KeyframeAnimationOptions = {
-      duration: 900,
+      duration: isMobileNow ? 650 : 900,
       easing: EASE,
       fill: 'both',
     };
@@ -824,9 +939,17 @@ export const LaptopDiveOpening: React.FC = () => {
     plate?.animate(zoomOutKeyframes, zoomOutOptions);
     cut?.animate(zoomOutKeyframes, zoomOutOptions);
 
-    setTimeout(heroIn, 250);
+    scheduleTimer(heroIn, isMobileNow ? 180 : 250);
 
-    setTimeout(() => {
+    scheduleTimer(() => {
+      if (modeRef.current === 'hero') {
+        setIsCaseMounted(false);
+      }
+      caseplate?.getAnimations().forEach((a) => a.cancel());
+      if (caseplate) {
+        caseplate.style.opacity = '0';
+        caseplate.style.filter = '';
+      }
       plate?.getAnimations().forEach((a) => a.cancel());
       cut?.getAnimations().forEach((a) => a.cancel());
       if (plate) {
@@ -839,8 +962,8 @@ export const LaptopDiveOpening: React.FC = () => {
       }
       frameRef.current?.classList.remove('glide');
       setBusy(false);
-    }, 1000);
-  }, [heroIn, isExpanded, place, setBusy]);
+    }, isMobileNow ? 720 : 1000);
+  }, [heroIn, place, scheduleTimer, setBusy]);
 
   useEffect(() => {
     const getScreenScroller = (target: EventTarget | null) => {
@@ -875,7 +998,13 @@ export const LaptopDiveOpening: React.FC = () => {
 
     const onTouchStart = (e: TouchEvent) => {
       if (isContactOpen || isExpanded || e.touches.length !== 1) return;
-      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      const scroller = getScreenScroller(e.target);
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        scrollTop: scroller ? scroller.scrollTop : 0,
+        inScroller: Boolean(scroller),
+      };
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -888,15 +1017,19 @@ export const LaptopDiveOpening: React.FC = () => {
         touchStartRef.current = null;
         return;
       }
+      const start = touchStartRef.current;
       const t = e.changedTouches[0];
-      const dy = t.clientY - touchStartRef.current.y;
+      const dy = t.clientY - start.y;
       touchStartRef.current = null;
       if (Math.abs(dy) < 40) return;
 
       if (modeRef.current === 'case') {
         const scroller = getScreenScroller(e.target);
-        if (scroller && scroller.scrollTop > 2) {
-          return;
+        if (start.inScroller || scroller) {
+          // Only allow pull-to-exit if the gesture STARTED at the very top and was an intentional pull
+          if (start.scrollTop > 2 || (scroller && scroller.scrollTop > 2) || dy < 85) {
+            return;
+          }
         }
       }
 
@@ -947,9 +1080,10 @@ export const LaptopDiveOpening: React.FC = () => {
           <img
             className="haldoren-plate"
             ref={plateRef}
-            src={ASSETS.plate}
+            src={assets.plate}
             alt=""
             decoding="async"
+            fetchPriority="high"
           />
 
           <svg
@@ -980,13 +1114,19 @@ export const LaptopDiveOpening: React.FC = () => {
           <img
             className="haldoren-cut"
             ref={cutRef}
-            src={ASSETS.cut}
+            src={assets.cut}
             alt="Rehan Shaikh portrait"
             decoding="async"
+            fetchPriority="high"
           />
 
           <div className="haldoren-badge haldoren-pre" ref={badgeRef}>
-            <BadgeCardContent isMain onHitEnter={handleBadgeHover} />
+            <BadgeCardContent
+              badgeSrc={assets.badge}
+              cutSrc={assets.cut}
+              isMain
+              onHitEnter={handleBadgeHover}
+            />
           </div>
 
           <div className="haldoren-script haldoren-pre" ref={scriptRef} aria-hidden="true">
@@ -998,14 +1138,14 @@ export const LaptopDiveOpening: React.FC = () => {
             ref={transRef}
             muted
             playsInline
-            preload="auto"
+            preload="none"
             crossOrigin="anonymous"
           />
 
           <img
             className="haldoren-caseplate"
             ref={caseplateRef}
-            src={ASSETS.casePlate}
+            src={assets.casePlate}
             alt=""
             decoding="async"
           />
@@ -1013,7 +1153,11 @@ export const LaptopDiveOpening: React.FC = () => {
           <div className="haldoren-screen" ref={screenRef}>
             <div className="haldoren-screen-iframe-wrap" ref={screenWrapRef}>
               <div className="haldoren-screen-iframe">
-                {!isExpanded && <PortfolioExperience embedded bezel />}
+                {isCaseMounted && !isExpanded && (
+                  <Suspense fallback={<div className="w-full h-full bg-[#0C0C0C]" />}>
+                    <PortfolioExperience embedded bezel />
+                  </Suspense>
+                )}
               </div>
             </div>
             <div className="haldoren-flash" ref={flashRef} />
@@ -1053,7 +1197,7 @@ export const LaptopDiveOpening: React.FC = () => {
           </div>
           <div className="haldoren-m-badge haldoren-pre" ref={mBadgeRef}>
             <div className="haldoren-badge">
-              <BadgeCardContent />
+              <BadgeCardContent badgeSrc={assets.badge} cutSrc={assets.cut} />
             </div>
           </div>
         </div>
@@ -1141,15 +1285,18 @@ export const LaptopDiveOpening: React.FC = () => {
             </button>
           </div>
           <div className="haldoren-expanded-iframe">
-            <PortfolioExperience embedded />
+            <Suspense fallback={<div className="w-full h-full bg-[#0C0C0C]" />}>
+              <PortfolioExperience embedded />
+            </Suspense>
           </div>
         </div>
       )}
 
-      <ContactModal
-        isOpen={isContactOpen}
-        onClose={closeStudioContact}
-      />
+      {isContactOpen && (
+        <Suspense fallback={null}>
+          <ContactModal isOpen={isContactOpen} onClose={closeStudioContact} />
+        </Suspense>
+      )}
     </>
   );
 };

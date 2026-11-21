@@ -1,19 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 import HeroSection from './HeroSection';
 import MarqueeSection from './MarqueeSection';
 import AboutSection from './AboutSection';
 import ServicesSection from './ServicesSection';
 import ProjectsSection from './ProjectsSection';
 import Footer from './Footer';
-import ContactModal from './ContactModal';
-import ResumeModal from './ResumeModal';
 import {
+  consumePendingScrollRestore,
   loadResumeState,
   patchResumeState,
   ResumeState,
+  subscribeFlushScroll,
   subscribeResumeSync,
 } from '../utils/resumeState';
 import { PortfolioScrollContext } from '../utils/portfolioScrollContext';
+
+const ContactModal = lazy(() => import('./ContactModal'));
+const ResumeModal = lazy(() => import('./ResumeModal'));
 
 function computeTargetScrollY(
   state: ResumeState,
@@ -34,7 +38,7 @@ function computeTargetScrollY(
   return Math.min(maxScroll, Math.max(0, state.portfolioScrollY));
 }
 
-export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean }> = ({
+export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean }> = React.memo(({
   embedded = false,
   bezel = false,
 }) => {
@@ -72,14 +76,18 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
     const el = embedded ? scrollContainerRef.current : null;
     if (el) {
       return {
+        ready: el.clientHeight > 0 && el.scrollHeight > 0,
         scrollTop: Math.max(0, el.scrollTop),
         scrollHeight: el.scrollHeight,
         clientHeight: el.clientHeight,
         clientWidth: el.clientWidth,
-        scrollTo: (top: number) => el.scrollTo({ top, behavior: 'auto' }),
+        scrollTo: (top: number) => {
+          el.scrollTop = top;
+        },
       };
     }
     return {
+      ready: window.innerHeight > 0,
       scrollTop: Math.max(0, window.scrollY),
       scrollHeight: document.documentElement.scrollHeight,
       clientHeight: window.innerHeight,
@@ -89,28 +97,33 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
   }, [embedded]);
 
   React.useLayoutEffect(() => {
-    if (!embedded && 'scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
-    }
+    if (!embedded) return;
+    if (!consumePendingScrollRestore()) return;
 
     const initial = loadResumeState();
     if (initial.portfolioScrollY > 1 || initial.portfolioScrollProgress > 0.001) {
       isRestoringRef.current = true;
       const m = getScrollMetrics();
-      const target = computeTargetScrollY(initial, m.scrollHeight, m.clientHeight, m.clientWidth);
-      m.scrollTo(target);
+      if (m.ready) {
+        const target = computeTargetScrollY(initial, m.scrollHeight, m.clientHeight, m.clientWidth);
+        m.scrollTo(target);
+      }
     }
   }, [embedded, getScrollMetrics]);
 
   useEffect(() => {
-    let rafSave = 0;
-    let stopRestoreTimer = 0;
-    let resizeObserver: ResizeObserver | null = null;
+    let saveTimer = 0;
+    let restoreRaf = 0;
     const scrollerEl = embedded ? scrollContainerRef.current : null;
 
     const persistScrollNow = () => {
+      if (saveTimer) {
+        window.clearTimeout(saveTimer);
+        saveTimer = 0;
+      }
       if (isRestoringRef.current) return;
       const m = getScrollMetrics();
+      if (!m.ready) return;
       const maxScroll = Math.max(0, m.scrollHeight - m.clientHeight);
       const progress = maxScroll > 0 ? Math.min(1, Math.max(0, m.scrollTop / maxScroll)) : 0;
       patchResumeState({
@@ -122,60 +135,31 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
     };
 
     const scheduleSave = () => {
-      if (isRestoringRef.current || rafSave) return;
-      rafSave = requestAnimationFrame(() => {
-        rafSave = 0;
+      if (isRestoringRef.current) return;
+      if (saveTimer) window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        saveTimer = 0;
         persistScrollNow();
-      });
-    };
-
-    const applySavedScroll = (state: ResumeState) => {
-      const wantsScroll =
-        state.portfolioScrollY > 1 || state.portfolioScrollProgress > 0.001;
-      if (!wantsScroll) {
-        isRestoringRef.current = false;
-        getScrollMetrics().scrollTo(0);
-        return;
-      }
-
-      isRestoringRef.current = true;
-      const applyOnce = () => {
-        if (!isRestoringRef.current) return;
-        const m = getScrollMetrics();
-        const target = computeTargetScrollY(
-          loadResumeState(),
-          m.scrollHeight,
-          m.clientHeight,
-          m.clientWidth
-        );
-        if (Math.abs(m.scrollTop - target) > 2) {
-          m.scrollTo(target);
-        }
-      };
-
-      applyOnce();
-      requestAnimationFrame(applyOnce);
-
-      window.clearTimeout(stopRestoreTimer);
-      stopRestoreTimer = window.setTimeout(() => {
-        applyOnce();
-        isRestoringRef.current = false;
-      }, 900);
+      }, 220);
     };
 
     const cancelRestoreOnUserInput = () => {
       if (isRestoringRef.current) {
         isRestoringRef.current = false;
-        window.clearTimeout(stopRestoreTimer);
+        if (restoreRaf) {
+          cancelAnimationFrame(restoreRaf);
+          restoreRaf = 0;
+        }
       }
     };
 
+    // Complete one-shot scroll restore cleanly after layout settles, never looping
     if (isRestoringRef.current) {
-      applySavedScroll(loadResumeState());
-      if (typeof ResizeObserver !== 'undefined') {
-        resizeObserver = new ResizeObserver(() => {
-          if (!isRestoringRef.current) return;
-          const m = getScrollMetrics();
+      restoreRaf = requestAnimationFrame(() => {
+        restoreRaf = 0;
+        if (!isRestoringRef.current) return;
+        const m = getScrollMetrics();
+        if (m.ready) {
           const target = computeTargetScrollY(
             loadResumeState(),
             m.scrollHeight,
@@ -185,23 +169,10 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
           if (Math.abs(m.scrollTop - target) > 2) {
             m.scrollTo(target);
           }
-        });
-        resizeObserver.observe(scrollerEl ?? document.documentElement);
-      }
+        }
+        isRestoringRef.current = false;
+      });
     }
-
-    const onLoad = () => {
-      if (isRestoringRef.current) {
-        const m = getScrollMetrics();
-        const target = computeTargetScrollY(
-          loadResumeState(),
-          m.scrollHeight,
-          m.clientHeight,
-          m.clientWidth
-        );
-        m.scrollTo(target);
-      }
-    };
 
     const onVisibilityOrHide = () => {
       if (document.visibilityState === 'hidden') {
@@ -209,14 +180,16 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
       }
     };
 
+    // Sync modal open states cleanly without hijacking active scroll position
     const unsubSync = subscribeResumeSync((state) => {
-      setIsContactOpen(state.portfolioContactOpen);
-      setIsResumeOpen(state.resumeModalOpen);
-      const m = getScrollMetrics();
-      const target = computeTargetScrollY(state, m.scrollHeight, m.clientHeight, m.clientWidth);
-      if (Math.abs(m.scrollTop - target) > 4) {
-        applySavedScroll(state);
-      }
+      setIsContactOpen((prev) => (prev === state.portfolioContactOpen ? prev : state.portfolioContactOpen));
+      setIsResumeOpen((prev) => (prev === state.resumeModalOpen ? prev : state.resumeModalOpen));
+    });
+
+    // Synchronous flush before Expand <-> Laptop transition
+    const unsubFlush = subscribeFlushScroll(() => {
+      isRestoringRef.current = false;
+      persistScrollNow();
     });
 
     const onFlushMessage = (e: MessageEvent) => {
@@ -229,9 +202,7 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
     const scrollTarget: HTMLElement | Window = scrollerEl ?? window;
     window.addEventListener('message', onFlushMessage);
     scrollTarget.addEventListener('scroll', scheduleSave, { passive: true });
-    window.addEventListener('load', onLoad);
     window.addEventListener('pagehide', persistScrollNow);
-    window.addEventListener('beforeunload', persistScrollNow);
     document.addEventListener('visibilitychange', onVisibilityOrHide);
     scrollTarget.addEventListener('wheel', cancelRestoreOnUserInput, { passive: true });
     scrollTarget.addEventListener('touchstart', cancelRestoreOnUserInput, { passive: true });
@@ -239,16 +210,13 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
     window.addEventListener('keydown', cancelRestoreOnUserInput);
 
     return () => {
-      persistScrollNow();
       unsubSync();
+      unsubFlush();
       window.removeEventListener('message', onFlushMessage);
-      if (rafSave) cancelAnimationFrame(rafSave);
-      window.clearTimeout(stopRestoreTimer);
-      resizeObserver?.disconnect();
+      if (saveTimer) window.clearTimeout(saveTimer);
+      if (restoreRaf) cancelAnimationFrame(restoreRaf);
       scrollTarget.removeEventListener('scroll', scheduleSave);
-      window.removeEventListener('load', onLoad);
       window.removeEventListener('pagehide', persistScrollNow);
-      window.removeEventListener('beforeunload', persistScrollNow);
       document.removeEventListener('visibilitychange', onVisibilityOrHide);
       scrollTarget.removeEventListener('wheel', cancelRestoreOnUserInput);
       scrollTarget.removeEventListener('touchstart', cancelRestoreOnUserInput);
@@ -257,50 +225,59 @@ export const PortfolioExperience: React.FC<{ embedded?: boolean; bezel?: boolean
     };
   }, [embedded, getScrollMetrics]);
 
-  return (
-    <PortfolioScrollContext.Provider
-      value={{ containerRef: embedded ? scrollContainerRef : null, embedded, bezel }}
-    >
-      <div
-        ref={embedded ? scrollContainerRef : undefined}
-        data-portfolio-scroll={embedded ? 'true' : undefined}
-        className={`${
-          embedded ? 'w-full h-full overflow-y-auto' : 'min-h-screen'
-        } bg-[#0C0C0C] text-[#D7E2EA] font-['Kanit',sans-serif] selection:bg-purple-600 selection:text-white`}
-        style={{ overflowX: 'clip' }}
-      >
-        {/* 1. Hero Section */}
-        <HeroSection onOpenContact={openContact} onOpenResume={openResume} />
-
-        {/* 2. Marquee Section */}
-        <MarqueeSection />
-
-        {/* 3. About Section */}
-        <AboutSection onOpenContact={openContact} />
-
-        {/* 4. Services / Skills Section */}
-        <ServicesSection />
-
-        {/* 5. Projects Section */}
-        <ProjectsSection onOpenContact={openContact} />
-
-        {/* Footer */}
-        <Footer onOpenContact={openContact} onOpenResume={openResume} />
-
-        {/* Interactive Contact Modal */}
-        <ContactModal
-          isOpen={isContactOpen}
-          onClose={closeContact}
-        />
-
-        {/* Interactive Resume PDF Modal */}
-        <ResumeModal
-          isOpen={isResumeOpen}
-          onClose={closeResume}
-        />
-      </div>
-    </PortfolioScrollContext.Provider>
+  const scrollContextValue = useMemo(
+    () => ({ containerRef: embedded ? scrollContainerRef : null, embedded, bezel }),
+    [embedded, bezel]
   );
-};
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <PortfolioScrollContext.Provider value={scrollContextValue}>
+        <div
+          ref={embedded ? scrollContainerRef : undefined}
+          data-portfolio-scroll={embedded ? 'true' : undefined}
+          className={`${
+            embedded ? 'w-full h-full overflow-y-auto' : 'min-h-[100svh]'
+          } bg-[#0C0C0C] text-[#D7E2EA] font-['Kanit',sans-serif] selection:bg-purple-600 selection:text-white`}
+          style={{ overflowX: 'clip' }}
+        >
+          {/* 1. Hero Section */}
+          <HeroSection onOpenContact={openContact} onOpenResume={openResume} />
+
+          {/* 2. Marquee Section */}
+          <MarqueeSection />
+
+          {/* 3. About Section */}
+          <AboutSection onOpenContact={openContact} />
+
+          {/* 4. Services / Skills Section */}
+          <ServicesSection />
+
+          {/* 5. Projects Section */}
+          <ProjectsSection onOpenContact={openContact} />
+
+          {/* Footer */}
+          <Footer onOpenContact={openContact} onOpenResume={openResume} />
+
+          {/* Interactive Contact Modal (lazy-loaded on demand) */}
+          {isContactOpen && (
+            <Suspense fallback={null}>
+              <ContactModal isOpen={isContactOpen} onClose={closeContact} />
+            </Suspense>
+          )}
+
+          {/* Interactive Resume PDF Modal (lazy-loaded on demand) */}
+          {isResumeOpen && (
+            <Suspense fallback={null}>
+              <ResumeModal isOpen={isResumeOpen} onClose={closeResume} />
+            </Suspense>
+          )}
+        </div>
+      </PortfolioScrollContext.Provider>
+    </MotionConfig>
+  );
+});
+
+PortfolioExperience.displayName = 'PortfolioExperience';
 
 export default PortfolioExperience;

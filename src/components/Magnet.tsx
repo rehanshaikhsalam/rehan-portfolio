@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface MagnetProps {
   children: React.ReactNode;
@@ -9,7 +9,7 @@ interface MagnetProps {
   className?: string;
 }
 
-export const Magnet: React.FC<MagnetProps> = ({
+export const Magnet: React.FC<MagnetProps> = React.memo(({
   children,
   padding = 150,
   strength = 3,
@@ -18,62 +18,92 @@ export const Magnet: React.FC<MagnetProps> = ({
   className = '',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isActive, setIsActive] = useState(false);
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-
-      const isNear =
-        e.clientX >= rect.left - padding &&
-        e.clientX <= rect.right + padding &&
-        e.clientY >= rect.top - padding &&
-        e.clientY <= rect.bottom + padding;
-
-      if (isNear) {
-        setIsActive(true);
-        const distanceX = (e.clientX - centerX) / strength;
-        const distanceY = (e.clientY - centerY) / strength;
-        setPosition({ x: distanceX, y: distanceY });
-      } else if (isActive) {
-        setIsActive(false);
-        setPosition({ x: 0, y: 0 });
-      }
-    },
-    [padding, strength, isActive]
-  );
-
-  const handleMouseLeave = useCallback(() => {
-    setIsActive(false);
-    setPosition({ x: 0, y: 0 });
-  }, []);
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('mouseleave', handleMouseLeave);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseleave', handleMouseLeave);
+    if (typeof window === 'undefined') return;
+    // Skip magnetic mouse tracking on touch devices or when reduced motion is enabled
+    const finePointer = window.matchMedia('(pointer: fine)').matches;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!finePointer || reducedMotion) return;
+
+    let rafId = 0;
+    let isActive = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    const applyTransform = () => {
+      rafId = 0;
+      const el = containerRef.current;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const isNear =
+        lastX >= rect.left - padding &&
+        lastX <= rect.right + padding &&
+        lastY >= rect.top - padding &&
+        lastY <= rect.bottom + padding;
+
+      if (isNear) {
+        if (!isActive) {
+          isActive = true;
+          el.style.transition = activeTransition;
+        }
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dx = (lastX - centerX) / strength;
+        const dy = (lastY - centerY) / strength;
+        el.style.transform = `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0)`;
+      } else if (isActive) {
+        isActive = false;
+        el.style.transition = inactiveTransition;
+        el.style.transform = 'translate3d(0px, 0px, 0)';
+      }
     };
-  }, [handleMouseMove, handleMouseLeave]);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      lastX = e.clientX;
+      lastY = e.clientY;
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyTransform);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      if (isActive && containerRef.current) {
+        isActive = false;
+        containerRef.current.style.transition = inactiveTransition;
+        containerRef.current.style.transform = 'translate3d(0px, 0px, 0)';
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [padding, strength, activeTransition, inactiveTransition]);
 
   return (
     <div
       ref={containerRef}
       className={`inline-block ${className}`}
       style={{
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        transition: isActive ? activeTransition : inactiveTransition,
-        willChange: 'transform',
+        transform: 'translate3d(0px, 0px, 0)',
+        transition: inactiveTransition,
       }}
     >
       {children}
     </div>
   );
-};
+});
+
+Magnet.displayName = 'Magnet';
 
 export default Magnet;
